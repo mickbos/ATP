@@ -1,0 +1,7 @@
+def main ( ) {
+operator= alsjehetmaarlaat 3
+operator= b9 3
+showme ( "ik weet niet wat ik hier moet neerzetten" )
+if ( operator== b9 alsjehetmaarlaat ) { showme ( "Is gelijk" ) }
+//help meeeee NAAAAAOW
+}
