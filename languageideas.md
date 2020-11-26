@@ -1,10 +1,8 @@
 TBMP
 
-; end of line
+Operator= x 2 //definition
 
-Operator= x 2
-
-Operator== a b
+Operator== a b //equals
 
 if( condition ) { what to do } 
 else { what to do }
@@ -13,7 +11,7 @@ while( while this returns True ) { what to do }
 
 Showme(  )  //print
 
-String tussen ""
+String between ""
 
 def functionname( variables ){
     what to do
