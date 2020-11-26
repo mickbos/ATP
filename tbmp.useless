@@ -2,6 +2,10 @@ def main ( ) {
 operator= alsjehetmaarlaat 3
 operator= b9 3
 showme ( "ik weet niet wat ik hier moet neerzetten" )
-if ( operator== b9 alsjehetmaarlaat ) { showme ( "Is gelijk" ) }
+if ( operator== b9 alsjehetmaarlaat ) { showme ( "Is gelijk" ) } //handel?
 //help meeeee NAAAAAOW
+}
+
+def help ( ) {
+showme ( "Mag dit alsjeblieft over zijn" )
 }

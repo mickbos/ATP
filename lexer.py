@@ -106,41 +106,6 @@ def stringToToken(string: str, linenr: int):
 
 
 
-def returnParenIndexes(tokenlist: List, lParen: int, rParen: int) -> tuple:
-    if(tokenlist[rParen].text == ")"):
-        return lParen, rParen
-    elif(tokenlist[lParen].text == "("):
-        return returnParenIndexes(tokenlist, lParen, rParen + 1)
-    else:
-        return returnParenIndexes(tokenlist, lParen + 1, rParen)
-
-def returnBraceIndexes(tokenlist: List, lBrace: int, rBrace: int) -> Tuple:
-    if(tokenlist[rBrace].text == "}"):
-        return lBrace, rBrace
-    elif(tokenlist[lBrace].text == "{"):
-        return returnParenIndexes(tokenlist, lBrace, rBrace - 1)
-    else:
-        return returnParenIndexes(tokenlist, lBrace + 1, rBrace)
-
-def returnFunctionExecutable(tokenlist: List) -> List:
-    if (tokenlist[1].text == "}"):
-        print()
-
-def makeAST(tokenlist: List):
-    ast = AST()
-    ast.name = tokenlist[0]
-    firstP, lastP = returnParenIndexes(tokenlist, 0, 0)
-    ast.argumentList = tokenlist[firstP+1: lastP]
-    firstB, lastB = returnBraceIndexes(tokenlist, lastP+1, len(tokenlist)-1)
-    ast.codeSequence = tokenlist[firstB + 1: lastB - 1]
-    print(ast.codeSequence)
-
-
-def operatordefinition(variablename: Token, value: Token ):
-    if(value.text != "NUMERAL" or value.text != "VARIABLE"):
-        raise Exception("{0} is not a numeral or variable".format(value.text))
-    
-
 class Token:
     def __init__(self, type_: str, text_: str, linenr_):
         self.type = type_
@@ -150,23 +115,11 @@ class Token:
     def __repr__(self):
         return "[" + self.type + ", " + self.text + "]"
 
-class AST:
-    def __init__(self, name: str = "", argumentList = "", codeSequence = "", returnType = ""):
-        self.name = name
-        self.argumentList = argumentList
-        self.codeSequence = codeSequence
-        self.returnType = returnType
-
-class Variable:
-    def __init__(self, name: str, returnType: str):
-        self.name = name
-        self.returnType = returnType
-
-
-def main():
-    
-    f = open("tbmp.txt", "r")
+def lexer(filename: str):
+    f = open(filename, "r")
     f = readFile(f)
+
+    f = map(lambda x: x.split("//", 1)[0], f)
 
     # addLineNumbers(f)
     # try:
@@ -174,12 +127,8 @@ def main():
     f = list(map(lambda x: (x[0].split(" "), x[1]), f))
     f = list(map(lambda y: (combineStrings(y[0]), y[1]), f))
     tokens = (list(map(lambda z: generateTokens(z[0], z[1]), f)))
-    tokens = reduce(operator.iconcat, tokens, [])
-    makeAST(tokens)
+    return reduce(operator.iconcat, tokens, [])
 
     # except Exception as e:
     #     print(e)
 
-
-if __name__ == "__main__":
-    main()
