@@ -30,15 +30,16 @@ def parseLine(tokenLine: List, functioncall: Function = None) -> List[Expression
                 return [Expression(tokenLine[0].text, 2, [Variable(tokenLine[1].text) if tokenLine[1].type == "VARIABLE" else Value(tokenLine[1].text), Variable(tokenLine[2].text) if tokenLine[2].type == "VARIABLE" else Value(tokenLine[2].text)])] + parseLine(tokenLine[3:])
             else:
                 possibleparen = returnParenIndexes(tokenLine)
+                print(possibleparen)
                 if(possibleparen[0] == 2):
-                    return [Expression(tokenLine[0].text, 2, [Function(tokenLine[possibleparen[0]-1],tokenLine[possibleparen[0]+1:possibleparen[1]]), Variable(tokenLine[2].text) if tokenLine[2].type == "VARIABLE" else Value(tokenLine[2].text)] ) ]
+                    return [Expression(tokenLine[0].text, 2, [Function(tokenLine[possibleparen[0]-1],tokenLine[possibleparen[0]+1:possibleparen[1]]), Variable(tokenLine[possibleparen[1] + 1].text) if tokenLine[possibleparen[1] + 1].type == "VARIABLE" else Value(tokenLine[possibleparen[1] + 1].text)] ) ]
                 else:
                     return [Expression(tokenLine[0].text, 2, [Variable(tokenLine[1].text) if tokenLine[1].type == "VARIABLE" else Value(tokenLine[1].text), Function(tokenLine[possibleparen[0]-1],tokenLine[possibleparen[0]+1:possibleparen[1]]) ] )]
         return [Expression(tokenLine[0].text, 2, [Variable(tokenLine[1].text) if tokenLine[1].type == "VARIABLE" else Value(tokenLine[1].text), Variable(tokenLine[2].text) if tokenLine[2].type == "VARIABLE" else Value(tokenLine[2].text)])]
     elif(tokenLine[0].type == "SHOWME" or tokenLine[0].type == "GIVEBACK"):
         # print(tokenLine)
         possibleparen = returnParenIndexes(tokenLine)
-        return [Expression(tokenLine[0].text, len(parseLine(tokenLine[2:possibleparen[1]])) , parseLine(tokenLine[2:possibleparen[1]]))]
+        return [Expression(tokenLine[0].text, len(parseLine(tokenLine[2:possibleparen[1]]))-2 , parseLine(tokenLine[2:possibleparen[1]]))]
     else:
         return list(map(lambda x: Variable(x.text) if x.type == "VARIABLE" else ( Value(x.text) if x.type == "NUMERAL" else Value(x.text)  ), tokenLine))
 
