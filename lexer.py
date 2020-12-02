@@ -6,23 +6,22 @@ from functools import reduce
 from typing import Callable, TypeVar, List, Tuple, Union
 import operator
 
-def readyForExtraction(fileinput : List) -> List:
-    fileinput = list(map(lambda x : checkForComments(x), fileinput))
-    fileinput = addLineNumbers(fileinput, 0) #adds the line numbers
-    return list(filter(lambda y: y[0], fileinput))  # removes lines with None or empty list entries
+class Token:
+    def __init__(self, type_: str, text_: str, linenr_):
+        self.type = type_
+        self.text = text_
+        self.linenr = linenr_
 
-def checkForComments(stringinput: str) -> str:
-    stringinput = stringinput.strip() # Strips whitespaces and \n
-    if(stringinput[0:2] != "//"):   # only returns the string if it doesn't have // as first 2 characters
-        return stringinput
+    def __repr__(self):
+        return "[" + self.type + ", " + self.text + "]"
 
-def addLineNumbers(fileinput: List, linenr: int) -> List:
+def addLineNumbers(fileinput: List, linenr: int) -> Tuple[List[Token], int]:
     fileinput[linenr] = (fileinput[linenr], linenr)
     if (linenr+1 == len(fileinput)):
         return fileinput
     return addLineNumbers(fileinput, linenr + 1)
 
-def rfind(r : List):
+def rfind(r : List) -> int:
     if not r:
         return -1
     elif r[-1][-1] == "\"": 
@@ -30,7 +29,7 @@ def rfind(r : List):
     else:
         return rfind(r[:-1])
 
-def lfind(l : List):
+def lfind(l : List) -> int:
     if not l:
         return -1
     elif l[-1][0] == "\"":
@@ -38,7 +37,7 @@ def lfind(l : List):
     else:
         return lfind(l[:-1])
 
-def combineStrings(stringinput: List):
+def combineStrings(stringinput: List[Token]) -> List[Token]:
     left = lfind(stringinput)
     right = rfind(stringinput)
     if(left != -1):
@@ -55,16 +54,10 @@ def combineStrings(stringinput: List):
     else:
         return stringinput
     
-def readFile(fileName : io.TextIOWrapper) -> List:
-    read = fileName.readline()
-    if (read == ""):
-        return [read]
-    return [read] + readFile(fileName)
-    
-def generateTokens(tokenstring : List, linenr: int):
+def generateTokens(tokenstring : List, linenr: int) -> List[Token]:
     return list(map(lambda x: stringToToken(x, linenr), tokenstring))
 
-def stringToToken(string: str, linenr: int):
+def stringToToken(string: str, linenr: int) -> Token:
     operators = ["operator=", "operator==", "operator+", "operator-", "operator<", "operator>"]
     if(string in operators):
         return Token("OPERATOR", string, linenr)
@@ -77,6 +70,8 @@ def stringToToken(string: str, linenr: int):
         return Token("SHOWME", "showme", linenr)
     if(string == "while"):
         return Token("WHILE", "while", linenr)
+    if(string == "giveback"):
+        return Token("GIVEBACK", "giveback", linenr)
     
     if(string == "def"):
         return Token("FUNCTIONDEF", string, linenr)
@@ -101,33 +96,21 @@ def stringToToken(string: str, linenr: int):
     if (re.fullmatch("^[a-zA-Z_][a-zA-Z_0-9]*", string)):
         return Token("VARIABLE", string, linenr)
 
+    elif(string[-1] == "("):
+        return Token("FUNCTIONCALL", string, linenr)
+
     else:
-        raise Exception("Syntax Error: \"{0}\" on line {1}. Pogn't".format(string, linenr))
+        raise Exception("Syntax Error: \"{0}\" on line {1}. That ain't it chief".format(string, linenr))
 
 
 
-class Token:
-    def __init__(self, type_: str, text_: str, linenr_):
-        self.type = type_
-        self.text = text_
-        self.linenr = linenr_
 
-    def __repr__(self):
-        return "[" + self.type + ", " + self.text + "]"
+def lexer(filename: str) -> List[Token]:
+    f = list(map(lambda x: x.split("//", 1)[0], open(filename, "r").readlines())) #read the file and remove the comments
 
-def lexer(filename: str):
-    f = open(filename, "r")
-    f = readFile(f)
-
-    f = map(lambda x: x.split("//", 1)[0], f)
-
-    # addLineNumbers(f)
     # try:
-    f = (readyForExtraction(f))
-    f = list(map(lambda x: (x[0].split(" "), x[1]), f))
-    f = list(map(lambda y: (combineStrings(y[0]), y[1]), f))
-    tokens = (list(map(lambda z: generateTokens(z[0], z[1]), f)))
-    return reduce(operator.iconcat, tokens, [])
+    f = list(map(lambda y: (combineStrings(y[0]), y[1]), addLineNumbers(list(map(lambda a: a.split(), f)), 0))) #Split the file, add line numbers and combine strings
+    return reduce(operator.iconcat, list(map(lambda z: generateTokens(z[0], z[1]), f)), []) #generate tokens and move all into one array
 
     # except Exception as e:
     #     print(e)

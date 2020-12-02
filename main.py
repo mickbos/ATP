@@ -4,8 +4,7 @@ from parser import parse
 def main():
     tokens = lexer("tbmp.useless")
     ASTs = (parse(tokens))
-    for ast in ASTs:
-        print (ast.codeSequence)
-
+    for i in (ASTs[1].blocks):
+        print(i)
 if __name__ == "__main__":
     main()

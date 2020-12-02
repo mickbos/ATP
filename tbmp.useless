@@ -1,11 +1,18 @@
 def main ( ) {
-operator= alsjehetmaarlaat 3
-operator= b9 3
-showme ( "ik weet niet wat ik hier moet neerzetten" )
-if ( operator== b9 alsjehetmaarlaat ) { showme ( "Is gelijk" ) } //handel?
+operator= flikker 6
+while ( operator< 3 flikker ) { 
+operator- flikker 1
+}
+operator+ a status ( 3 )
+showme ( "test" )
+if ( operator== b9 alsjehetmaarlaat ) { operator+ a a } //handel?
+if ( operator== b9 alsjehetmaarlaat ) { showme ( operator== a a ) } //handel?
+
 //help meeeee NAAAAAOW
 }
 
-def help ( ) {
-showme ( "Mag dit alsjeblieft over zijn" )
+def status ( a ) {
+    showme ( "Dit is in een functie" a )
+    operator+ a 1 
+    giveback ( a )
 }

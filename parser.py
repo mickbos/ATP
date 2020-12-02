@@ -1,51 +1,17 @@
 from functools import reduce
 from typing import Callable, TypeVar, List, Tuple, Union
 import operator
+import copy
 from lexer import Token
+from collections import namedtuple
 
-class Node():
 
-    def __init__(self, value : str = None, type : str = None, linenr : int = 0):
-        self.value = value
-        self.type = type
-        self.linenr = linenr
-
-    def __str__(self) -> str:
-        return ("(value: " + (" None " if self.value is None else self.value) + " Type: " + str(self.type) + ")\n")
-
-    def __repr__(self) -> str:
-        return self.__str__()
-
-class operator_node(Node):
-
-    def __init__(self, value : str = None , lhs : Node = None , operator : str = None, rhs : Node = None, linenr : int = 0):
-        Node.__init__(self, linenr, value, operator )
-        self.value = value
-        self.lhs = lhs
-        self.operator = operator
-        self.rhs = rhs
-        self.linenr = linenr
-
-    def __str__(self) -> str:
-        return ("(value: " + (" None " if self.value is None else self.value) + " lhs: " + (" None " if self.lhs is None else self.lhs.__repr__())
-                + " operator: " + str(self.operator.name) + " rhs: " + (" None " if self.rhs is None else self.rhs.__repr__()) + ")\n")
-
-    def __repr__(self) -> str:
-        return self.__str__()
-
-class value_node(Node):
-    def __init__(self, value : str = None, type : str = None, linenr : int = 0):
-        Node.__init__(self, linenr, value, type)
-        self.value = value
-        self.type = type
-        self.linenr = linenr
-
-    def __str__(self):
-        return ("(value: " + (" None " if self.value is None else self.value) + " Type: " + str(self.type.name) +  ")\n" )
-
-    def __repr__(self):
-        return self.__str__()
-
+Expression = namedtuple("Expression", ["function", "argc", "args"])
+Function = namedtuple("Function", ["name", "args"])
+Variable = namedtuple("Variable", ["name"])
+Value = namedtuple("Value", ["content"])
+Loop = namedtuple("Loop", ["Body", "Expression"])
+If = namedtuple("If", ["Body", "Expression"])
 
 class AST:
     def __init__(self, name: str = "", argumentList = "", codeSequence = "", returnType = ""):
@@ -53,10 +19,61 @@ class AST:
         self.argumentList = argumentList
         self.codeSequence = codeSequence
         self.returnType = returnType
+        self.blocks = List
 
+def parseLine(tokenLine: List, functioncall: Function = None) -> List[Expression]:
+    if not tokenLine:
+        return 
+    if (tokenLine[0].type == "OPERATOR"):
+        if(len(tokenLine)> 3):
+            if(tokenLine[3].type == "OPERATOR"):
+                return [Expression(tokenLine[0].text, 2, [Variable(tokenLine[1].text) if tokenLine[1].type == "VARIABLE" else Value(tokenLine[1].text), Variable(tokenLine[2].text) if tokenLine[2].type == "VARIABLE" else Value(tokenLine[2].text)])] + parseLine(tokenLine[3:])
+            else:
+                possibleparen = returnParenIndexes(tokenLine)
+                if(possibleparen[0] == 2):
+                    return [Expression(tokenLine[0].text, 2, [Function(tokenLine[possibleparen[0]-1],tokenLine[possibleparen[0]+1:possibleparen[1]]), Variable(tokenLine[2].text) if tokenLine[2].type == "VARIABLE" else Value(tokenLine[2].text)] ) ]
+                else:
+                    return [Expression(tokenLine[0].text, 2, [Variable(tokenLine[1].text) if tokenLine[1].type == "VARIABLE" else Value(tokenLine[1].text), Function(tokenLine[possibleparen[0]-1],tokenLine[possibleparen[0]+1:possibleparen[1]]) ] )]
+        return [Expression(tokenLine[0].text, 2, [Variable(tokenLine[1].text) if tokenLine[1].type == "VARIABLE" else Value(tokenLine[1].text), Variable(tokenLine[2].text) if tokenLine[2].type == "VARIABLE" else Value(tokenLine[2].text)])]
+    elif(tokenLine[0].type == "SHOWME" or tokenLine[0].type == "GIVEBACK"):
+        # print(tokenLine)
+        possibleparen = returnParenIndexes(tokenLine)
+        return [Expression(tokenLine[0].text, len(parseLine(tokenLine[2:possibleparen[1]])) , parseLine(tokenLine[2:possibleparen[1]]))]
+    else:
+        return list(map(lambda x: Variable(x.text) if x.type == "VARIABLE" else ( Value(x.text) if x.type == "NUMERAL" else Value(x.text)  ), tokenLine))
 
+#-> Union[Loop(Expression, List[Expression]): If(Expression, List[Expression])]
+def parseLoop(tokenLine: List) :
+    parenindex = returnParenIndexes(tokenLine) #Find the parenthesis
+    expres = parseLine(tokenLine[parenindex[0]+1:parenindex[1]]) #Do parse line in between the parenthesis for the expression
+    braceindex = returnBraceIndexes(tokenLine, parenindex[1], parenindex[1]) #Find the braces
+    body = parseLine(tokenLine[braceindex[0]+1: braceindex[1]]) #do parse line in between the braces for the body
+    if (tokenLine[0].type == "WHILE"):
+        return [Loop(body, expres)]
+    else:
+        return [If(body, expres)]
 
-def findFunctionIndex(tokenlist: List, index: List = []):
+def detectParse(tokens):
+    operators = ["OPERATOR", "SHOWME", "GIVEBACK", "WHILE", "IF", "ELSE"]
+    tokenLine =  copy.copy(tokens)
+    if(tokenLine): 
+        if(tokenLine[0].type == "OPERATOR"):
+            if(tokenLine[3].type not in operators):
+                return parseLine(tokenLine[:6]) + detectParse(tokenLine[6:])
+            return parseLine(tokenLine[:3]) + detectParse(tokenLine[3:])
+        if(tokenLine[0].type == "SHOWME" or tokenLine[0].type == "GIVEBACK"):
+            parenIndexes = returnParenIndexes(tokenLine)
+            return parseLine(tokenLine[:parenIndexes[1]+1]) + detectParse(tokenLine[parenIndexes[1]+1:])
+        if(tokenLine[0].type == "WHILE"):
+            braceIndexes = returnBraceIndexes(tokenLine)
+            return parseLoop(tokenLine) + detectParse(tokenLine[braceIndexes[1]+1:])
+        if(tokenLine[0].type == "IF"):
+            braceIndexes = returnBraceIndexes(tokenLine)
+            return parseLoop(tokenLine) + detectParse(tokenLine[braceIndexes[1]+1:])
+
+    return []
+
+def findFunctionIndex(tokenlist: List, index: List = []) -> List[int]:
     if(len(tokenlist) == 0):
         return index
     elif (tokenlist[-1].text == "def"):
@@ -66,7 +83,7 @@ def findFunctionIndex(tokenlist: List, index: List = []):
         return findFunctionIndex(tokenlist[:-1], index)
 
 
-def returnParenIndexes(tokenlist: List, lParen: int, rParen: int, toSkip: int) -> tuple:
+def returnParenIndexes(tokenlist: List, lParen: int =0, rParen: int =0, toSkip: int = -1) -> Tuple[int, int]:
     if(tokenlist[rParen].text == ")"):
         if(toSkip > 0):
             return returnParenIndexes(tokenlist, lParen, rParen + 1, toSkip - 1)
@@ -82,12 +99,12 @@ def returnParenIndexes(tokenlist: List, lParen: int, rParen: int, toSkip: int) -
     else:
         return returnParenIndexes(tokenlist, lParen + 1, rParen, toSkip)
 
-def returnBraceIndexes(tokenlist: List, lBrace: int, rBrace: int, toSkip: int) -> tuple:
+def returnBraceIndexes(tokenlist: List, lBrace: int = 0, rBrace: int =0, toSkip: int = -1) -> Tuple[int, int]:
     if(tokenlist[rBrace].text == "}"):
         if(toSkip > 0):
             return returnBraceIndexes(tokenlist, lBrace, rBrace + 1, toSkip - 1)
         if(toSkip == -1):
-            raise Exception("Opening parenthesis not found at line {0}".format(tokenlist[rBrace].linenr))
+            raise Exception("Opening brace not found at line {0}".format(tokenlist[rBrace].linenr))
         else:
             return lBrace, rBrace
     elif(tokenlist[rBrace].text == "{"):
@@ -101,14 +118,18 @@ def returnBraceIndexes(tokenlist: List, lBrace: int, rBrace: int, toSkip: int) -
 def makeAST(tokenlist: List) -> List[AST]:
     ast = AST()
     ast.name = tokenlist[1]
-    firstP, lastP = returnParenIndexes(tokenlist, 0, 0, -1)
+    firstP, lastP = returnParenIndexes(tokenlist, 0, 0)
     ast.argumentList = tokenlist[firstP+1: lastP]
-    firstB, lastB = returnBraceIndexes(tokenlist, lastP + 1, lastP + 1, -1)
+    firstB, lastB = returnBraceIndexes(tokenlist, lastP + 1, lastP + 1)
     ast.codeSequence = tokenlist[firstB + 1: lastB ]
+    return ast
+
+def generateBlocks(ast: AST):
+    ast.blocks = detectParse(ast.codeSequence)
     return ast
 
 def parse(tokens: List[Token]):
     functionindexes = findFunctionIndex(tokens)
     functionindexes.sort()
-    print(functionindexes)
-    return list(map(lambda x: makeAST(tokens[x:]), functionindexes))
+    asts = list(map(lambda y: generateBlocks(y), list(map(lambda x: makeAST(tokens[x:]), functionindexes))))
+    return asts
