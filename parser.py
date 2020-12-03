@@ -21,7 +21,7 @@ class AST:
         self.returnType = returnType
         self.blocks = List
 
-def parseLine(tokenLine: List, functioncall: Function = None) -> List[Expression]:
+def parseLine(tokenLine: List, functioncall: Function = None) -> Union[Expression, List[Expression], Loop, If, List[Union[Variable, Value]], Function]:
     if not tokenLine:
         return 
     if (tokenLine[0].type == "OPERATOR"):
@@ -30,29 +30,32 @@ def parseLine(tokenLine: List, functioncall: Function = None) -> List[Expression
                 return [Expression(tokenLine[0].text, 2, [Variable(tokenLine[1].text) if tokenLine[1].type == "VARIABLE" else Value(tokenLine[1].text), Variable(tokenLine[2].text) if tokenLine[2].type == "VARIABLE" else Value(tokenLine[2].text)])] + parseLine(tokenLine[3:])
             else:
                 possibleparen = returnParenIndexes(tokenLine)
-                print(possibleparen)
                 if(possibleparen[0] == 2):
-                    return [Expression(tokenLine[0].text, 2, [Function(tokenLine[possibleparen[0]-1],tokenLine[possibleparen[0]+1:possibleparen[1]]), Variable(tokenLine[possibleparen[1] + 1].text) if tokenLine[possibleparen[1] + 1].type == "VARIABLE" else Value(tokenLine[possibleparen[1] + 1].text)] ) ]
+                    return [Expression(tokenLine[0].text, 2, [Function(tokenLine[possibleparen[0]-1].text, parseLine(tokenLine[possibleparen[0]+1:possibleparen[1]])), Variable(tokenLine[possibleparen[1] + 1].text) if tokenLine[possibleparen[1] + 1].type == "VARIABLE" else Value(tokenLine[possibleparen[1] + 1].text)] ) ]
                 else:
-                    return [Expression(tokenLine[0].text, 2, [Variable(tokenLine[1].text) if tokenLine[1].type == "VARIABLE" else Value(tokenLine[1].text), Function(tokenLine[possibleparen[0]-1],tokenLine[possibleparen[0]+1:possibleparen[1]]) ] )]
+                    return [Expression(tokenLine[0].text, 2, [Variable(tokenLine[1].text) if tokenLine[1].type == "VARIABLE" else Value(tokenLine[1].text), Function(tokenLine[possibleparen[0]-1].text, parseLine(tokenLine[possibleparen[0]+1:possibleparen[1]])) ] )]
         return [Expression(tokenLine[0].text, 2, [Variable(tokenLine[1].text) if tokenLine[1].type == "VARIABLE" else Value(tokenLine[1].text), Variable(tokenLine[2].text) if tokenLine[2].type == "VARIABLE" else Value(tokenLine[2].text)])]
-    elif(tokenLine[0].type == "SHOWME" or tokenLine[0].type == "GIVEBACK"):
-        # print(tokenLine)
-        possibleparen = returnParenIndexes(tokenLine)
-        return [Expression(tokenLine[0].text, len(parseLine(tokenLine[2:possibleparen[1]]))-2 , parseLine(tokenLine[2:possibleparen[1]]))]
-    else:
-        return list(map(lambda x: Variable(x.text) if x.type == "VARIABLE" else ( Value(x.text) if x.type == "NUMERAL" else Value(x.text)  ), tokenLine))
-
-#-> Union[Loop(Expression, List[Expression]): If(Expression, List[Expression])]
-def parseLoop(tokenLine: List) :
-    parenindex = returnParenIndexes(tokenLine) #Find the parenthesis
-    expres = parseLine(tokenLine[parenindex[0]+1:parenindex[1]]) #Do parse line in between the parenthesis for the expression
-    braceindex = returnBraceIndexes(tokenLine, parenindex[1], parenindex[1]) #Find the braces
-    body = parseLine(tokenLine[braceindex[0]+1: braceindex[1]]) #do parse line in between the braces for the body
     if (tokenLine[0].type == "WHILE"):
+        parenindex = returnParenIndexes(tokenLine) #Find the parenthesis
+        expres = parseLine(tokenLine[parenindex[0]+1:parenindex[1]]) #Do parse line in between the parenthesis for the expression
+        braceindex = returnBraceIndexes(tokenLine, parenindex[1], parenindex[1]) #Find the braces
+        body = parseLine(tokenLine[braceindex[0]+1: braceindex[1]]) #do parse line in between the braces for the body
         return [Loop(body, expres)]
-    else:
+    if (tokenLine[0].type == "IF"):
+        parenindex = returnParenIndexes(tokenLine) #Find the parenthesis
+        expres = parseLine(tokenLine[parenindex[0]+1:parenindex[1]]) #Do parse line in between the parenthesis for the expression
+        braceindex = returnBraceIndexes(tokenLine, parenindex[1], parenindex[1]) #Find the braces
+        body = parseLine(tokenLine[braceindex[0]+1: braceindex[1]]) #do parse line in between the braces for the body
         return [If(body, expres)]
+    elif(tokenLine[0].type == "SHOWME" or tokenLine[0].type == "GIVEBACK"):
+        possibleparen = returnParenIndexes(tokenLine)
+        return [Expression(tokenLine[0].text, len(parseLine(tokenLine[2:possibleparen[1]])) , parseLine(tokenLine[2:possibleparen[1]]))]
+    elif(len(tokenLine)>= 1):
+        if(len(tokenLine)!=1):
+            if(tokenLine[0].type == "VARIABLE" and tokenLine[1].type == "LPAREN"):
+                possibleparen = returnParenIndexes(tokenLine)
+                return [Function(tokenLine[possibleparen[0]-1].text, parseLine(tokenLine[possibleparen[0]+1:possibleparen[1]]))]
+        return list(map(lambda x: Variable(x.text) if x.type == "VARIABLE" else ( Value(x.text) if x.type == "NUMERAL" else Value(x.text)  ), tokenLine))
 
 def detectParse(tokens):
     operators = ["OPERATOR", "SHOWME", "GIVEBACK", "WHILE", "IF", "ELSE"]
@@ -67,10 +70,13 @@ def detectParse(tokens):
             return parseLine(tokenLine[:parenIndexes[1]+1]) + detectParse(tokenLine[parenIndexes[1]+1:])
         if(tokenLine[0].type == "WHILE"):
             braceIndexes = returnBraceIndexes(tokenLine)
-            return parseLoop(tokenLine) + detectParse(tokenLine[braceIndexes[1]+1:])
+            return parseLine(tokenLine) + detectParse(tokenLine[braceIndexes[1]+1:])
         if(tokenLine[0].type == "IF"):
             braceIndexes = returnBraceIndexes(tokenLine)
-            return parseLoop(tokenLine) + detectParse(tokenLine[braceIndexes[1]+1:])
+            return parseLine(tokenLine) + detectParse(tokenLine[braceIndexes[1]+1:])
+        if(tokenLine[0].type == "VARIABLE" and tokenLine[1].type == "LPAREN"):
+            parenIndexes = returnParenIndexes(tokenLine)
+            return( parseLine(tokenLine[:parenIndexes[1]+1]) + detectParse(tokenLine[parenIndexes[1]+1:]))
 
     return []
 
