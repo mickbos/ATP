@@ -1,18 +1,23 @@
 def main ( ) {
-operator= flikker 6
-while ( operator< 3 flikker ) { 
-operator- flikker 1
+operator= flikker 7
+showme ( flikker )
+while ( operator< flikker 12 ) { 
+operator= flikker plusplus ( flikker )
+showme ( flikker )
 }
-operator+ a status ( 3 )
-showme ( "test" )
-if ( operator== b9 alsjehetmaarlaat ) { operator+ a a } //handel?
-if ( operator== b9 alsjehetmaarlaat ) { showme ( operator== a a ) } //handel?
-
-//help meeeee NAAAAAOW
+status ( 7 )
+operator= a 7
+if ( operator> flikker 11 ) { showme ( flikker ) }
+else { showme ( "Else statement" ) }
+operator+ a 3
+operator= a status ( 5 )
+ //handel?
+if ( operator== a 16 )  { operator+ a 2 operator- a 3 } //handel?
+giveback ( a )
+operator= handel "handel"
 }
 
 def status ( a ) {
-    showme ( "Dit is in een functie" a )
-    operator+ a 1 
-    giveback ( a )
+    showme ( "Status" a )
+    giveback ( plusplus ( a ) )
 }

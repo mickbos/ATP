@@ -37,6 +37,9 @@ def lfind(l : List) -> int:
     else:
         return lfind(l[:-1])
 
+def isNumeral(s) -> bool:
+    return all(map(lambda l: '0' <= '9', s if s != '-' else s[1:]))
+
 def combineStrings(stringinput: List[Token]) -> List[Token]:
     left = lfind(stringinput)
     right = rfind(stringinput)
@@ -91,7 +94,7 @@ def stringToToken(string: str, linenr: int) -> Token:
     if(string == ")"):
         return Token("RPAREN", ")", linenr)    
         
-    if(string.isnumeric()):
+    if(re.fullmatch("^[0-9-][0-9.]*", string)):
         return Token("NUMERAL", string, linenr)
     if (re.fullmatch("^[a-zA-Z_][a-zA-Z_0-9]*", string)):
         return Token("VARIABLE", string, linenr)
@@ -100,18 +103,12 @@ def stringToToken(string: str, linenr: int) -> Token:
         return Token("FUNCTIONCALL", string, linenr)
 
     else:
-        raise Exception("Syntax Error: \"{0}\" on line {1}. That ain't it chief".format(string, linenr))
+        raise Exception("Syntax Error: \"{0}\" on line {1}.".format(string, linenr))
 
 
 
 
 def lexer(filename: str) -> List[Token]:
-    f = list(map(lambda x: x.split("//", 1)[0], open(filename, "r").readlines())) #read the file and remove the comments
-
-    # try:
-    f = list(map(lambda y: (combineStrings(y[0]), y[1]), addLineNumbers(list(map(lambda a: a.split(), f)), 0))) #Split the file, add line numbers and combine strings
-    return reduce(operator.iconcat, list(map(lambda z: generateTokens(z[0], z[1]), f)), []) #generate tokens and move all into one array
-
-    # except Exception as e:
-    #     print(e)
+    f = list(map(lambda special: list(map(lambda y: (combineStrings(y[0]), y[1]), addLineNumbers(list(map(lambda a: a.split(), list(map(lambda x: x.split("//", 1)[0], open(special, "r").readlines())))), 0))), filename)) #Split the file, add line numbers and combine strings
+    return reduce(operator.iconcat, list(map(lambda z: generateTokens(z[0], z[1]), reduce(operator.iconcat, f, []))), []) #generate tokens and move all into one array
 

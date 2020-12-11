@@ -11,29 +11,32 @@ Function = namedtuple("Function", ["name", "args"])
 Variable = namedtuple("Variable", ["name"])
 Value = namedtuple("Value", ["content"])
 Loop = namedtuple("Loop", ["Body", "Expression"])
-If = namedtuple("If", ["Body", "Expression"])
+If = namedtuple("If", ["Body", "Expression", "ElseBody"])
 
 class AST:
-    def __init__(self, name: str = "", argumentList = "", codeSequence = "", returnType = ""):
+    def __init__(self, name: str = "", argumentList = "", codeSequence = "", funcreturn = ""):
         self.name = name
         self.argumentList = argumentList
         self.codeSequence = codeSequence
-        self.returnType = returnType
+        self.funcreturn  = funcreturn
         self.blocks = List
 
 def parseLine(tokenLine: List, functioncall: Function = None) -> Union[Expression, List[Expression], Loop, If, List[Union[Variable, Value]], Function]:
     if not tokenLine:
         return 
     if (tokenLine[0].type == "OPERATOR"):
-        if(len(tokenLine)> 3):
+        if(len(tokenLine) > 3):
             if(tokenLine[3].type == "OPERATOR"):
                 return [Expression(tokenLine[0].text, 2, [Variable(tokenLine[1].text) if tokenLine[1].type == "VARIABLE" else Value(tokenLine[1].text), Variable(tokenLine[2].text) if tokenLine[2].type == "VARIABLE" else Value(tokenLine[2].text)])] + parseLine(tokenLine[3:])
             else:
-                possibleparen = returnParenIndexes(tokenLine)
-                if(possibleparen[0] == 2):
-                    return [Expression(tokenLine[0].text, 2, [Function(tokenLine[possibleparen[0]-1].text, parseLine(tokenLine[possibleparen[0]+1:possibleparen[1]])), Variable(tokenLine[possibleparen[1] + 1].text) if tokenLine[possibleparen[1] + 1].type == "VARIABLE" else Value(tokenLine[possibleparen[1] + 1].text)] ) ]
-                else:
-                    return [Expression(tokenLine[0].text, 2, [Variable(tokenLine[1].text) if tokenLine[1].type == "VARIABLE" else Value(tokenLine[1].text), Function(tokenLine[possibleparen[0]-1].text, parseLine(tokenLine[possibleparen[0]+1:possibleparen[1]])) ] )]
+                if(tokenLine[3].type != "SHOWME" and tokenLine[3].type != "GIVEBACK"): #If not showme or giveback or operator, it's a function call
+                    possibleparen = returnParenIndexes(tokenLine)
+                    if(possibleparen[0] == 2): #Check if the functioncall comes left or right of the operator
+                        return [Expression(tokenLine[0].text, 2, [Function(tokenLine[possibleparen[0]-1].text, parseLine(tokenLine[possibleparen[0]+1:possibleparen[1]])), Variable(tokenLine[possibleparen[1] + 1].text) if tokenLine[possibleparen[1] + 1].type == "VARIABLE" else Value(tokenLine[possibleparen[1] + 1].text)] ) ]
+                    else:
+                        return [Expression(tokenLine[0].text, 2, [Variable(tokenLine[1].text) if tokenLine[1].type == "VARIABLE" else Value(tokenLine[1].text), Function(tokenLine[possibleparen[0]-1].text, parseLine(tokenLine[possibleparen[0]+1:possibleparen[1]])) ] )]
+                else: #When there is a showme or giveback line after the operator line
+                    return [Expression(tokenLine[0].text, 2, [Variable(tokenLine[1].text) if tokenLine[1].type == "VARIABLE" else Value(tokenLine[1].text), Variable(tokenLine[2].text) if tokenLine[2].type == "VARIABLE" else Value(tokenLine[2].text)])] + parseLine(tokenLine[3:])
         return [Expression(tokenLine[0].text, 2, [Variable(tokenLine[1].text) if tokenLine[1].type == "VARIABLE" else Value(tokenLine[1].text), Variable(tokenLine[2].text) if tokenLine[2].type == "VARIABLE" else Value(tokenLine[2].text)])]
     if (tokenLine[0].type == "WHILE"):
         parenindex = returnParenIndexes(tokenLine) #Find the parenthesis
@@ -46,24 +49,30 @@ def parseLine(tokenLine: List, functioncall: Function = None) -> Union[Expressio
         expres = parseLine(tokenLine[parenindex[0]+1:parenindex[1]]) #Do parse line in between the parenthesis for the expression
         braceindex = returnBraceIndexes(tokenLine, parenindex[1], parenindex[1]) #Find the braces
         body = parseLine(tokenLine[braceindex[0]+1: braceindex[1]]) #do parse line in between the braces for the body
-        return [If(body, expres)]
+        if(len(tokenLine)> braceindex[1] + 1): #Check if there is a possible Else statement
+            if(tokenLine[braceindex[1]+1].type == "ELSE"): #Check for Else
+                elseBraceIndex = returnBraceIndexes(tokenLine, braceindex[1]+2, braceindex[1]+2) #Find the braces for the else body
+                elseBody = parseLine(tokenLine[elseBraceIndex[0]+1: elseBraceIndex[1]]) 
+                return [If(body, expres, elseBody)]
+        return [If(body, expres, None)]
+
     elif(tokenLine[0].type == "SHOWME" or tokenLine[0].type == "GIVEBACK"):
         possibleparen = returnParenIndexes(tokenLine)
-        return [Expression(tokenLine[0].text, len(parseLine(tokenLine[2:possibleparen[1]])) , parseLine(tokenLine[2:possibleparen[1]]))]
+        return [Expression(tokenLine[0].text, len(parseLine(tokenLine[2:possibleparen[1]])) , parseLine(tokenLine[2:possibleparen[1]]))] #from 2 to the last parenthesis
     elif(len(tokenLine)>= 1):
         if(len(tokenLine)!=1):
-            if(tokenLine[0].type == "VARIABLE" and tokenLine[1].type == "LPAREN"):
+            if(tokenLine[0].type == "VARIABLE" and tokenLine[1].type == "LPAREN"): #If function call
                 possibleparen = returnParenIndexes(tokenLine)
                 return [Function(tokenLine[possibleparen[0]-1].text, parseLine(tokenLine[possibleparen[0]+1:possibleparen[1]]))]
-        return list(map(lambda x: Variable(x.text) if x.type == "VARIABLE" else ( Value(x.text) if x.type == "NUMERAL" else Value(x.text)  ), tokenLine))
+        return list(map(lambda x: Variable(x.text) if x.type == "VARIABLE" else ( Value(x.text)  ), tokenLine)) #This returns the variables or values. I throw everything I use in operators or functioncalls back into this function to check for nested things
 
-def detectParse(tokens):
+def detectParse(tokenLine: List[Token]) -> List[Union[Expression, Loop, If, Function]]:
     operators = ["OPERATOR", "SHOWME", "GIVEBACK", "WHILE", "IF", "ELSE"]
-    tokenLine =  copy.copy(tokens)
     if(tokenLine): 
         if(tokenLine[0].type == "OPERATOR"):
-            if(tokenLine[3].type not in operators):
-                return parseLine(tokenLine[:6]) + detectParse(tokenLine[6:])
+            if(len(tokenLine) > 3):
+                if(tokenLine[3].type not in operators): #When there's a functioncall
+                    return parseLine(tokenLine[:6]) + detectParse(tokenLine[6:])
             return parseLine(tokenLine[:3]) + detectParse(tokenLine[3:])
         if(tokenLine[0].type == "SHOWME" or tokenLine[0].type == "GIVEBACK"):
             parenIndexes = returnParenIndexes(tokenLine)
@@ -73,11 +82,16 @@ def detectParse(tokens):
             return parseLine(tokenLine) + detectParse(tokenLine[braceIndexes[1]+1:])
         if(tokenLine[0].type == "IF"):
             braceIndexes = returnBraceIndexes(tokenLine)
+            if(len(tokenLine)> braceIndexes[1]+1):
+                if(tokenLine[braceIndexes[1]+1].type == "ELSE"):
+                    elseBraceIndex = returnBraceIndexes(tokenLine, braceIndexes[1]+1, braceIndexes[1]+1)
+                    return parseLine(tokenLine) + detectParse(tokenLine[elseBraceIndex[1]+1:])
             return parseLine(tokenLine) + detectParse(tokenLine[braceIndexes[1]+1:])
-        if(tokenLine[0].type == "VARIABLE" and tokenLine[1].type == "LPAREN"):
+        if(tokenLine[0].type == "VARIABLE" and tokenLine[1].type == "LPAREN"): #Functioncall
             parenIndexes = returnParenIndexes(tokenLine)
             return( parseLine(tokenLine[:parenIndexes[1]+1]) + detectParse(tokenLine[parenIndexes[1]+1:]))
-
+        else:
+            raise Exception("Syntax Error: \"{0}\" on line {1}.".format(tokenLine[0].text, tokenLine[0].linenr +1))
     return []
 
 def findFunctionIndex(tokenlist: List, index: List = []) -> List[int]:
@@ -126,17 +140,17 @@ def makeAST(tokenlist: List) -> List[AST]:
     ast = AST()
     ast.name = tokenlist[1]
     firstP, lastP = returnParenIndexes(tokenlist, 0, 0)
-    ast.argumentList = tokenlist[firstP+1: lastP]
+    ast.argumentList =  list(map(lambda i: i.text, tokenlist[firstP+1: lastP])) 
     firstB, lastB = returnBraceIndexes(tokenlist, lastP + 1, lastP + 1)
     ast.codeSequence = tokenlist[firstB + 1: lastB ]
     return ast
 
-def generateBlocks(ast: AST):
+def generateBlocks(ast: AST) -> AST:
     ast.blocks = detectParse(ast.codeSequence)
     return ast
 
-def parse(tokens: List[Token]):
+def parse(tokens: List[Token]) -> List[AST]:
     functionindexes = findFunctionIndex(tokens)
     functionindexes.sort()
-    asts = list(map(lambda y: generateBlocks(y), list(map(lambda x: makeAST(tokens[x:]), functionindexes))))
+    asts = list(map(lambda y: generateBlocks(y), list(map(lambda x: makeAST(tokens[x-1:]), functionindexes))))
     return asts

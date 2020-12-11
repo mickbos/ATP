@@ -1,0 +1,3 @@
+def plusplus ( inc ) {
+    giveback ( operator+ inc 1 )
+}
