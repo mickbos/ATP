@@ -1,4 +1,5 @@
 from functools import reduce
+from tempfile import NamedTemporaryFile
 from typing import Callable, TypeVar, List, Tuple, Union
 import operator
 import copy
@@ -12,6 +13,7 @@ Variable = namedtuple("Variable", ["name"])
 Value = namedtuple("Value", ["content"])
 Loop = namedtuple("Loop", ["Body", "Expression"])
 If = namedtuple("If", ["Body", "Expression", "ElseBody"])
+ParserError = namedtuple("Error", ["Errormessage"])
 
 class AST:
     def __init__(self, name: str = "", argumentList = "", codeSequence = "", funcreturn = ""):
