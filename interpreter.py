@@ -3,6 +3,8 @@ from typing import List, Union, Tuple
 from collections import namedtuple
 from copy import copy
 
+InterperterError = namedtuple("InterpreterError", ["Errormessage"])
+
 def returnValue(expinput, memory) -> Union[int, str]:
     if(type(expinput) == Value):
         if(expinput.content.isnumeric()):
@@ -11,7 +13,7 @@ def returnValue(expinput, memory) -> Union[int, str]:
             return str(expinput.content[1:-1])
     if(type(expinput) == Variable):
         if(memory.get(expinput.name) == None):
-            raise Exception("{0} has no definition".format(expinput.name))
+            return None
         return memory.get(expinput.name)
     if(type(expinput) == Expression):
         memory = interpretNamedTuple(expinput, memory)[1]
@@ -40,36 +42,50 @@ def interpretFunction(exp: namedtuple, memory: dict):
     return interpret(functionBody, functionMemory)
 
 def interpretExpression(exp: namedtuple, memory: dict):
-    if(exp.function == "operator="):
-        memory = {**memory, **{exp.args[0].name: returnValue(exp.args[1], memory)}}
+    returnvalue0 = returnValue(exp.args[0], memory)
+    returnvalue1 = returnValue(exp.args[1], memory)
+    if(returnvalue0 is None and exp.function != "operator="):
+        memory = {"Error": InterperterError("{0} has no definition".format(exp.args[0]))}
         return True, memory
-    if(exp.function == "operator=="):
-        if(type(memory[exp.args[0].name] == type(returnValue(exp.args[1], memory)))):
-            return (memory[exp.args[0].name] == returnValue(exp.args[1], memory)), memory
-        else:
-            raise TypeError("Cannot check equality operation. Type of {0} and {1} are not the same".format(memory[exp.args[0].name], returnValue(exp.args[1], memory)))
-    if(exp.function == "operator+"):
-        if(type(returnValue(exp.args[0], memory) != int)):
-            memory[exp.args[0].name] += returnValue(exp.args[1], memory)
+    elif(returnvalue1 is None and exp.function != "operator="):
+        memory = {"Error": InterperterError("{0} has no definition".format(exp.args[1]))}
+        return True, memory
+    else:
+        if(exp.function == "operator="):
+            memory = {**memory, **{exp.args[0].name: returnvalue1}}
             return True, memory
-        else:
-            raise TypeError("Cannot preform + operation on {0}, {1} because one isn't an integer".format(exp.args[0], exp.args(1)))
-    if(exp.function == "operator-"):
-        if(type(returnValue(exp.args[0], memory) != int)):
-            memory[exp.args[0].name] -= returnValue(exp.args[1], memory)
-            return True, memory
-        else:
-            raise TypeError("Cannot preform - operation on {0}, {1} because one isn't an integer".format(exp.args[0], exp.args(1)))
-    if(exp.function == "operator<"):
-        if(type(memory[exp.args[0].name] == type(returnValue(exp.args[1], memory)))):
-            return (memory[exp.args[0].name] < returnValue(exp.args[1], memory)), memory
-        else:
-            raise TypeError("Cannot check less than operation. Type of {0} and {1} are not the same".format(memory[exp.args[0].name], returnValue(exp.args[1], memory)))
-    if(exp.function == "operator>"):
-        if(type(memory[exp.args[0].name] == type(returnValue(exp.args[1], memory)))):
-            return (memory[exp.args[0].name] > returnValue(exp.args[1], memory)), memory
-        else:
-            raise TypeError("Cannot check greater than operation. Type of {0} and {1} are not the same".format(memory[exp.args[0].name], returnValue(exp.args[1], memory)))
+        if(exp.function == "operator=="):
+            if(type(returnvalue0) == type(returnvalue1)):
+                return (memory[exp.args[0].name] == returnvalue1), memory
+            else:
+                memory = {"Error": InterperterError("Cannot check equality operation. Type of {0} and {1} are not the same".format(memory[exp.args[0].name], returnvalue1))}
+                return True, memory
+        if(exp.function == "operator+"):
+            if(type(returnvalue0) == int and type(returnvalue1) == int):
+                memory[exp.args[0].name] += returnvalue1
+                return True, memory
+            else:
+                memory = {"Error": InterperterError("Cannot preform + operation on {0}, {1} because one isn't of type Int".format(exp.args[0], exp.args[1]))}
+                return True, memory
+        if(exp.function == "operator-"):
+            if(type(returnvalue0) == int and type(returnvalue1) == int):
+                memory[exp.args[0].name] -= returnvalue1
+                return True, memory
+            else:
+                memory = {"Error": InterperterError("Cannot preform + operation on {0}, {1} because one isn't of type Int".format(exp.args[0], exp.args[1]))}
+                return True, memory
+        if(exp.function == "operator<"):
+            if(type(returnvalue1) == type(returnvalue1)):
+                return (memory[exp.args[0].name] < returnvalue1), memory
+            else:
+                memory = {"Error": InterperterError("Cannot check less than operation. Type of {0} and {1} are not the same".format(memory[exp.args[0].name], returnvalue1))}
+                return True, memory
+        if(exp.function == "operator>"):
+            if(type(returnvalue1) == type(returnvalue1)):
+                return (memory[exp.args[0].name] > returnvalue1), memory
+            else:
+                memory = {"Error": InterperterError("Cannot check greater than operation. Type of {0} and {1} are not the same".format(memory[exp.args[0].name], returnvalue1))}
+                return True, memory
     
 def interpretNamedTuple(exp: namedtuple, memory: dict) -> Tuple[Union[bool, Union[str, int]], dict]:
     print(exp)
@@ -94,7 +110,7 @@ def interpretNamedTuple(exp: namedtuple, memory: dict) -> Tuple[Union[bool, Unio
             else:
                 return interpretExpression(exp, memory)
         else:
-            memory = {"Error": ParserError("Cannot use {0} as variable".format(type(exp.args[0]).__name__))}
+            memory = {"Error": InterperterError("Cannot use {0} as variable".format(type(exp.args[0]).__name__))}
             return True, memory
     
 

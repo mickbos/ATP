@@ -1,4 +1,6 @@
+from decimal import DefaultContext
 from functools import reduce
+from secrets import token_urlsafe
 from tempfile import NamedTemporaryFile
 from typing import Callable, TypeVar, List, Tuple, Union
 import operator
@@ -13,7 +15,7 @@ Variable = namedtuple("Variable", ["name"])
 Value = namedtuple("Value", ["content"])
 Loop = namedtuple("Loop", ["Body", "Expression"])
 If = namedtuple("If", ["Body", "Expression", "ElseBody"])
-ParserError = namedtuple("Error", ["Errormessage"])
+ParserError = namedtuple("ParserError", ["Errormessage"])
 
 class AST:
     def __init__(self, name: str = "", argumentList = "", codeSequence = "", funcreturn = ""):
@@ -22,6 +24,7 @@ class AST:
         self.codeSequence = codeSequence
         self.funcreturn  = funcreturn
         self.blocks = List
+        self.error = None
 
 def parseLine(tokenLine: List, functioncall: Function = None) -> Union[Expression, List[Expression], Loop, If, List[Union[Variable, Value]], Function]:
     if not tokenLine:
@@ -96,6 +99,50 @@ def detectParse(tokenLine: List[Token]) -> List[Union[Expression, Loop, If, Func
             raise Exception("Syntax Error: \"{0}\" on line {1}.".format(tokenLine[0].text, tokenLine[0].linenr +1))
     return []
 
+def parseNotOperator(tokenLine: List[Token]):
+    # print(tokenLine)
+    if(tokenLine[0].type == "VARIABLE"):
+        if(tokenLine[1].type == "LPAREN"): #Functioncall
+            parenIndexes = returnParenIndexes(tokenLine)
+            # print(parenIndexes)
+            if(parenIndexes is not ParserError):
+                functionname = tokenLine[0].text
+                argument, tokenLine = detectparse(tokenLine[parenIndexes[0]+1:])
+                function = Function(functionname, argument )
+                return function, tokenLine[1:]
+            
+        else:
+            return Variable(tokenLine[0].text), tokenLine[1:]
+    else:
+        return Value(tokenLine[0].text), tokenLine[1:]
+    
+def parseOperator(tokenLine: List[Token]):
+    function = tokenLine[0].text
+    argument1, tokenLine = detectparse(tokenLine[1:])
+    argument2, tokenLine = detectparse(tokenLine)
+    return Expression(function=function, argc=2, args=[argument1, argument2]), tokenLine
+
+def parseShowGiveback(tokenLine: List[Token]){
+    function = tokenLine[0].text
+    parenindex = returnParenIndexes(tokenLine[1:])
+    arguments, tokenLine = detectparse(tokenLine[1:])
+    
+    return Expression(function=)
+    print()
+}
+
+def detectparse(tokenLine: List[Token]) -> List[Union[Expression, Loop, If, Function]]:
+    operators = ["OPERATOR", "SHOWME", "GIVEBACK", "WHILE", "IF", "ELSE"]
+    if tokenLine:
+        if(tokenLine[0].type not in operators):
+            return parseNotOperator(tokenLine)
+        if(tokenLine[0].type == "OPERATOR"):
+            return parseOperator(tokenLine)
+        if(tokenLine[0].type == "SHOWME" or tokenLine[0].type == "GIVEBACK"):
+            return parseShowGiveback()
+    return [], []
+
+
 def findFunctionIndex(tokenlist: List, index: List = []) -> List[int]:
     if(len(tokenlist) == 0):
         return index
@@ -106,49 +153,82 @@ def findFunctionIndex(tokenlist: List, index: List = []) -> List[int]:
         return findFunctionIndex(tokenlist[:-1], index)
 
 
-def returnParenIndexes(tokenlist: List, lParen: int =0, rParen: int =0, toSkip: int = -1) -> Tuple[int, int]:
+def returnParenIndexes(tokenlist: List, lParen: int =0, rParen: int =0, toSkip: int = -1) -> Union[Tuple[int, int], ParserError]:
     if(tokenlist[rParen].text == ")"):
         if(toSkip > 0):
             return returnParenIndexes(tokenlist, lParen, rParen + 1, toSkip - 1)
         if(toSkip == -1):
-            raise Exception("Opening parenthesis not found at line {0}".format(tokenlist[rParen].linenr))
+            return ParserError("Opening parenthesis not found at line {0}".format(tokenlist[rParen].linenr))
         else:
             return lParen, rParen
     elif(tokenlist[rParen].text == "("):
+        if( ( len(tokenlist) - rParen) == 1 ):
+            return ParserError("Closing parenthesis not found")
         return returnParenIndexes(tokenlist, lParen, rParen + 1, toSkip + 1)
 
     elif(tokenlist[lParen].text == "("):
+        if( ( len(tokenlist) - rParen) == 1 ):
+            return ParserError("Closing parenthesis not found")
         return returnParenIndexes(tokenlist, lParen, rParen + 1, toSkip)
     else:
+        if( ( len(tokenlist) - lParen) == 1 ):
+            return ParserError("Opening parenthesis not found")
         return returnParenIndexes(tokenlist, lParen + 1, rParen, toSkip)
 
-def returnBraceIndexes(tokenlist: List, lBrace: int = 0, rBrace: int =0, toSkip: int = -1) -> Tuple[int, int]:
+def returnBraceIndexes(tokenlist: List, lBrace: int = 0, rBrace: int =0, toSkip: int = -1) -> Union[Tuple[int, int], ParserError]:
     if(tokenlist[rBrace].text == "}"):
         if(toSkip > 0):
             return returnBraceIndexes(tokenlist, lBrace, rBrace + 1, toSkip - 1)
         if(toSkip == -1):
-            raise Exception("Opening brace not found at line {0}".format(tokenlist[rBrace].linenr))
+            return ParserError("Opening brace not found at line {0}".format(tokenlist[rBrace].linenr))
         else:
             return lBrace, rBrace
-    elif(tokenlist[rBrace].text == "{"):
-        return returnBraceIndexes(tokenlist, lBrace, rBrace + 1, toSkip + 1)
-
-    elif(tokenlist[lBrace].text == "{"):
-        return returnBraceIndexes(tokenlist, lBrace, rBrace + 1, toSkip)
     else:
-        return returnBraceIndexes(tokenlist, lBrace + 1, rBrace, toSkip)
+        if(tokenlist[rBrace].text == "{"):
+            if( ( len(tokenlist) - rBrace) == 1 ):
+                return ParserError("Closing brace not found")
+            return returnBraceIndexes(tokenlist, lBrace, rBrace + 1, toSkip + 1)
 
-def makeAST(tokenlist: List) -> List[AST]:
+        elif(tokenlist[lBrace].text == "{"):
+            if( ( len(tokenlist) - rBrace) == 1 ):
+                return ParserError("Closing brace not found")
+            return returnBraceIndexes(tokenlist, lBrace, rBrace + 1, toSkip)
+        else:
+            if( ( len(tokenlist) - lBrace) == 1 ):
+                return ParserError("Opening brace not found")
+            return returnBraceIndexes(tokenlist, lBrace + 1, rBrace, toSkip)
+
+
+
+
+def makeAST(tokenlist: List) -> AST:
     ast = AST()
     ast.name = tokenlist[1]
-    firstP, lastP = returnParenIndexes(tokenlist, 0, 0)
+
+    parenIndex = returnParenIndexes(tokenlist, 0, 0)
+    if (type(parenIndex) == ParserError):
+        ast.error = parenIndex
+        return ast
+    firstP, lastP = parenIndex
+
     ast.argumentList =  list(map(lambda i: i.text, tokenlist[firstP+1: lastP])) 
-    firstB, lastB = returnBraceIndexes(tokenlist, lastP + 1, lastP + 1)
+
+    braceIndex = returnBraceIndexes(tokenlist, lastP + 1, lastP + 1)
+    if (type(braceIndex) == ParserError):
+        ast.error = braceIndex
+        return ast
+    firstB, lastB = braceIndex
     ast.codeSequence = tokenlist[firstB + 1: lastB ]
+    ast.blocks = []
     return ast
 
 def generateBlocks(ast: AST) -> AST:
-    ast.blocks = detectParse(ast.codeSequence)
+    value, tokenlist = detectparse(ast.codeSequence)
+    if (value):
+        ast.blocks.append(value)
+        ast.codeSequence = tokenlist
+        if(tokenlist):
+            return generateBlocks(ast)
     return ast
 
 def parse(tokens: List[Token]) -> List[AST]:
