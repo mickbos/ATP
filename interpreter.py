@@ -22,14 +22,14 @@ def returnValue(expinput, memory) -> Union[int, str]:
         return interpretNamedTuple(expinput, memory)[0]
     
 def interpretLoop(exp: namedtuple, memory: dict) -> dict:
-    if(interpretNamedTuple(*exp.Expression, memory)[0]):
+    if(interpretExpression(exp.Expression, memory)[0]):
         memory = interpret(exp.Body, memory)
         return interpretLoop(exp, memory)
     else:
         return memory
 
 def interpretIf(exp: namedtuple, memory: dict) -> dict:
-    if(interpretNamedTuple(*exp.Expression, memory)[0]):
+    if(interpretExpression(exp.Expression, memory)[0]):
         memory = interpret(exp.Body, memory)
     else:
         if(exp.ElseBody):
@@ -40,6 +40,14 @@ def interpretFunction(exp: namedtuple, memory: dict):
     functionBody = memory[exp.name]
     functionMemory = {**dict(filter(lambda a: a if type(a[1]) == AST else None, memory.items())), **{'functionarguments': list(map(lambda l: returnValue(l, memory), exp.args))}}
     return interpret(functionBody, functionMemory)
+
+def interpretGiveback(exp: namedtuple, memory):
+    if(exp.argc > 1 ):
+        memory = {"Error": InterperterError("Cannot return multiple values")}
+        return memory 
+    value = returnValue(exp.args[0], memory)
+    memory = {**memory, **{"giveback": value}}
+    return memory
 
 def interpretExpression(exp: namedtuple, memory: dict):
     returnvalue0 = returnValue(exp.args[0], memory)
@@ -76,6 +84,7 @@ def interpretExpression(exp: namedtuple, memory: dict):
                 return True, memory
         if(exp.function == "operator<"):
             if(type(returnvalue1) == type(returnvalue1)):
+                f = memory[exp.args[0].name]
                 return (memory[exp.args[0].name] < returnvalue1), memory
             else:
                 memory = {"Error": InterperterError("Cannot check less than operation. Type of {0} and {1} are not the same".format(memory[exp.args[0].name], returnvalue1))}
@@ -88,23 +97,22 @@ def interpretExpression(exp: namedtuple, memory: dict):
                 return True, memory
     
 def interpretNamedTuple(exp: namedtuple, memory: dict) -> Tuple[Union[bool, Union[str, int]], dict]:
-    print(exp)
-    print(memory)
     if( type(exp) == Loop):
         return True, interpretLoop(exp, memory)
     if( type(exp) == If):
         return True, interpretIf(exp, memory)
     if( type(exp) == Function):
         if( exp.name in memory): #For the line under here: interpret the list of blocks in combination with a memory filled with every functioncall and a zip between the arguments given with the function and the 
-            return interpretFunction(exp, memory)['giveback'][0], memory
+            return interpretFunction(exp, memory)['giveback'], memory
         memory = {"Error": ParserError("{0} is not a defined function".format(exp.name))}
-        return memory
+        return False, memory
     if( type(exp) == Expression ):
         if(type(exp.args[0]) == Variable or exp.function == "showme" or exp.function == "giveback"):
             if(exp.function == "showme"):
                 print(*(list(map(lambda x: returnValue(x, memory), exp.args))))
                 return True, memory
             if(exp.function == "giveback"):
+                return True, interpretGiveback(exp, memory)
                 memory = {**memory, **{"giveback": list(map(lambda i: returnValue(i, memory), exp.args))}}
                 return True, memory
             else:
@@ -121,6 +129,7 @@ def interpret(ast : List, memory : dict):
         blocklist = ast.blocks
     else:
         blocklist = ast
+    print(blocklist)
     if ( len(blocklist) > 1 ):
         memory = interpretNamedTuple(blocklist[0], memory)[1]
         if( (memory.get("Error"))):

@@ -2,7 +2,7 @@ def main ( ) {
 operator= flikker 7
 showme ( flikker )
 while ( operator< flikker 12 ) { 
-operator= flikker plusplus ( flikker )
+operator= flikker 15
 showme ( flikker )
 }
 status ( 7 )
@@ -18,6 +18,6 @@ operator= handel "handel"
 }
 
 def status ( a ) {
-    showme ( "Status" a )
-    giveback ( plusplus ( a ) )
+    showme ( "Status" )
+    giveback ( operator+ a 1 )
 }

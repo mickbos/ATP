@@ -1,10 +1,14 @@
+from ast import arguments
 from decimal import DefaultContext
 from functools import reduce
+from lib2to3.pgen2 import token
 from secrets import token_urlsafe
 from tempfile import NamedTemporaryFile
 from typing import Callable, TypeVar, List, Tuple, Union
 import operator
 import copy
+
+from pyrsistent import b
 from lexer import Token
 from collections import namedtuple
 
@@ -100,11 +104,9 @@ def detectParse(tokenLine: List[Token]) -> List[Union[Expression, Loop, If, Func
     return []
 
 def parseNotOperator(tokenLine: List[Token]):
-    # print(tokenLine)
     if(tokenLine[0].type == "VARIABLE"):
         if(tokenLine[1].type == "LPAREN"): #Functioncall
             parenIndexes = returnParenIndexes(tokenLine)
-            # print(parenIndexes)
             if(parenIndexes is not ParserError):
                 functionname = tokenLine[0].text
                 argument, tokenLine = detectparse(tokenLine[parenIndexes[0]+1:])
@@ -122,14 +124,41 @@ def parseOperator(tokenLine: List[Token]):
     argument2, tokenLine = detectparse(tokenLine)
     return Expression(function=function, argc=2, args=[argument1, argument2]), tokenLine
 
-def parseShowGiveback(tokenLine: List[Token]){
+def parseShowGiveback(tokenLine: List[Token]):
     function = tokenLine[0].text
-    parenindex = returnParenIndexes(tokenLine[1:])
-    arguments, tokenLine = detectparse(tokenLine[1:])
+    parenindex = returnParenIndexes(tokenLine)
+    arguments, tokenLine = detectparse(tokenLine[parenindex[0]+1:])
     
-    return Expression(function=)
-    print()
-}
+    return Expression(function=function, argc=len(arguments), args=[arguments]), tokenLine[1:]
+
+def parseIf(tokenLine: List[Token]):
+    parenIndex = returnParenIndexes(tokenLine)
+    expression, tokenLine = detectparse(tokenLine[parenIndex[0]+1:])
+    braceIndex = returnBraceIndexes(tokenLine)
+    body, tokenLine = detectparse(tokenLine[braceIndex[0]+1:])
+
+    if(tokenLine[1].text == "ELSE"):
+        braceIndex = returnBraceIndexes(tokenLine)
+        elsebody, tokenLine = detectparse(tokenLine[braceIndex[0]+1:])
+        return If(Expression=expression, Body=[body], ElseBody=elsebody), tokenLine[1:]
+
+    return If(Expression=expression, Body=[body], ElseBody = []),  tokenLine[1:]
+
+def parseBody(tokenLine : List[Token],  temp):
+    if tokenLine[0].text == "}":
+        return temp, tokenLine[1:]
+    else:
+        exp, tokenLine = detectparse(tokenLine)
+        temp.append(exp)
+        return parseBody(tokenLine, temp)
+
+def parseWhile(tokenLine: List[Token]):
+    parenIndex = returnParenIndexes(tokenLine)
+    expression, tokenLine = detectparse(tokenLine[parenIndex[0]+1:])
+    braceIndex = returnBraceIndexes(tokenLine)
+    body, tokenLine = parseBody(tokenLine[braceIndex[0]+1:], [])
+
+    return Loop(Expression=expression, Body=body), tokenLine
 
 def detectparse(tokenLine: List[Token]) -> List[Union[Expression, Loop, If, Function]]:
     operators = ["OPERATOR", "SHOWME", "GIVEBACK", "WHILE", "IF", "ELSE"]
@@ -139,7 +168,11 @@ def detectparse(tokenLine: List[Token]) -> List[Union[Expression, Loop, If, Func
         if(tokenLine[0].type == "OPERATOR"):
             return parseOperator(tokenLine)
         if(tokenLine[0].type == "SHOWME" or tokenLine[0].type == "GIVEBACK"):
-            return parseShowGiveback()
+            return parseShowGiveback(tokenLine)
+        if(tokenLine[0].type == "IF"):
+            return parseIf(tokenLine)
+        if(tokenLine[0].type == "WHILE"):
+            return parseWhile(tokenLine)
     return [], []
 
 
