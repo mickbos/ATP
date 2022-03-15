@@ -36,20 +36,18 @@ def interpretIf(exp: namedtuple, memory: dict) -> dict:
             memory = interpret(exp.ElseBody, memory)
     return memory
 
-def interpretFunction(exp: namedtuple, memory: dict):
+def interpretFunction(exp: namedtuple, memory: dict) -> dict:
     functionBody = memory[exp.name]
-    functionMemory = {**dict(filter(lambda a: a if type(a[1]) == AST else None, memory.items())), **{'functionarguments': list(map(lambda l: returnValue(l, memory), exp.args))}}
+    functionArguments = returnValue(exp.args, memory)
+    functionMemory = {**dict(filter(lambda a: a if type(a[1]) == AST else None, memory.items())), **{'functionarguments': [functionArguments]}}
     return interpret(functionBody, functionMemory)
 
-def interpretGiveback(exp: namedtuple, memory):
-    if(exp.argc > 1 ):
-        memory = {"Error": InterperterError("Cannot return multiple values")}
-        return memory 
+def interpretGiveback(exp: namedtuple, memory) -> dict:
     value = returnValue(exp.args[0], memory)
     memory = {**memory, **{"giveback": value}}
     return memory
 
-def interpretExpression(exp: namedtuple, memory: dict):
+def interpretExpression(exp: namedtuple, memory: dict) -> Tuple[Union[int, bool], dict]:
     returnvalue0 = returnValue(exp.args[0], memory)
     returnvalue1 = returnValue(exp.args[1], memory)
     if(returnvalue0 is None and exp.function != "operator="):
@@ -60,8 +58,12 @@ def interpretExpression(exp: namedtuple, memory: dict):
         return True, memory
     else:
         if(exp.function == "operator="):
-            memory = {**memory, **{exp.args[0].name: returnvalue1}}
-            return True, memory
+            if(type(exp.args[0] == Variable)):
+                memory = {**memory, **{exp.args[0].name: returnvalue1}}
+                return True, memory
+            else:
+                memory = {"Error": InterperterError("Can only sign a value to a variable")}
+                return False, memory
         if(exp.function == "operator=="):
             if(type(returnvalue0) == type(returnvalue1)):
                 return (memory[exp.args[0].name] == returnvalue1), memory
@@ -71,14 +73,14 @@ def interpretExpression(exp: namedtuple, memory: dict):
         if(exp.function == "operator+"):
             if(type(returnvalue0) == int and type(returnvalue1) == int):
                 memory[exp.args[0].name] += returnvalue1
-                return True, memory
+                return memory[exp.args[0].name], memory
             else:
                 memory = {"Error": InterperterError("Cannot preform + operation on {0}, {1} because one isn't of type Int".format(exp.args[0], exp.args[1]))}
                 return True, memory
         if(exp.function == "operator-"):
             if(type(returnvalue0) == int and type(returnvalue1) == int):
                 memory[exp.args[0].name] -= returnvalue1
-                return True, memory
+                return memory[exp.args[0].name], memory
             else:
                 memory = {"Error": InterperterError("Cannot preform + operation on {0}, {1} because one isn't of type Int".format(exp.args[0], exp.args[1]))}
                 return True, memory
@@ -96,7 +98,7 @@ def interpretExpression(exp: namedtuple, memory: dict):
                 memory = {"Error": InterperterError("Cannot check greater than operation. Type of {0} and {1} are not the same".format(memory[exp.args[0].name], returnvalue1))}
                 return True, memory
     
-def interpretNamedTuple(exp: namedtuple, memory: dict) -> Tuple[Union[bool, Union[str, int]], dict]:
+def interpretNamedTuple(exp: namedtuple, memory: dict) -> Tuple[Union[str, int, bool], dict]:
     if( type(exp) == Loop):
         return True, interpretLoop(exp, memory)
     if( type(exp) == If):
@@ -113,16 +115,16 @@ def interpretNamedTuple(exp: namedtuple, memory: dict) -> Tuple[Union[bool, Unio
                 return True, memory
             if(exp.function == "giveback"):
                 return True, interpretGiveback(exp, memory)
-                memory = {**memory, **{"giveback": list(map(lambda i: returnValue(i, memory), exp.args))}}
-                return True, memory
             else:
                 return interpretExpression(exp, memory)
         else:
             memory = {"Error": InterperterError("Cannot use {0} as variable".format(type(exp.args[0]).__name__))}
             return True, memory
-    
+    if( type(exp) == ParserError):
+        memory = {"Error": exp}
+        return False, memory
 
-def interpret(ast : List, memory : dict):
+def interpret(ast : List, memory : dict) -> dict:
     if( type(ast) == AST ):
         if( 'functionarguments' in memory and ast.argumentList[0] not in memory):
             memory = {**memory, **(dict(zip(ast.argumentList, memory['functionarguments'])))}
@@ -130,6 +132,7 @@ def interpret(ast : List, memory : dict):
     else:
         blocklist = ast
     print(blocklist)
+    print(memory)
     if ( len(blocklist) > 1 ):
         memory = interpretNamedTuple(blocklist[0], memory)[1]
         if( (memory.get("Error"))):

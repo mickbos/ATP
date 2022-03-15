@@ -1,9 +1,6 @@
-import io
-import os
 import re
-import time
 from functools import reduce
-from typing import Callable, TypeVar, List, Tuple, Union
+from typing import List, Tuple
 import operator
 
 class Token:
@@ -13,7 +10,7 @@ class Token:
         self.linenr = linenr_
 
     def __repr__(self):
-        return "[" + self.type + ", " + self.text + "]"
+        return "[" + self.type + ", " + self.text + "] at " + self.linenr
 
 def addLineNumbers(fileinput: List, linenr: int) -> Tuple[List[Token], int]:
     fileinput[linenr] = (fileinput[linenr], linenr)
@@ -110,5 +107,6 @@ def stringToToken(string: str, linenr: int) -> Token:
 
 def lexer(filename: str) -> List[Token]:
     f = list(map(lambda special: list(map(lambda y: (combineStrings(y[0]), y[1]), addLineNumbers(list(map(lambda a: a.split(), list(map(lambda x: x.split("//", 1)[0], open(special, "r").readlines())))), 0))), filename)) #Split the file, add line numbers and combine strings
-    return reduce(operator.iconcat, list(map(lambda z: generateTokens(z[0], z[1]), reduce(operator.iconcat, f, []))), []) #generate tokens and move all into one array
+    tokenList = list(map(lambda z: generateTokens(z[0], z[1]), reduce(operator.iconcat, f, [])))
+    return reduce(operator.iconcat, tokenList, []) #generate tokens and move all into one array
 

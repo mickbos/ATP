@@ -1,5 +1,26 @@
-def main ( ) {
-    operator= ab ef ( ab )
-    operator+ ab operator+ 2 3
-    operator= a status ( 5 )
+def odd ( n ) {
+  if ( operator== n 0 ) {
+        giveback ( 0 )
+    }
+  else {
+      giveback ( even ( operator- n 1 ) )
+  }
+}
+
+def even ( n ) {
+    if ( operator== n 0 ) {
+      giveback ( 1 )
+    }
+    else {
+        giveback ( odd ( operator- n 1 ) )
+    }
+}
+
+def sommig ( n ) {
+    operator= result 0
+    while ( operator> n 0 ) {
+        operator= result operator+ result n 
+        operator= n operator- n 1
+    }
+    giveback ( result )
 }
