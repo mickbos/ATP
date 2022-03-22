@@ -1,3 +1,4 @@
+from lexer import LexerError
 from myparser import Expression, Function, Variable, Value, Loop, If, AST, ParserError
 from typing import List, Union, Tuple
 from collections import namedtuple
@@ -120,7 +121,7 @@ def interpretNamedTuple(exp: namedtuple, memory: dict) -> Tuple[Union[str, int, 
         else:
             memory = {"Error": InterperterError("Cannot use {0} as variable".format(type(exp.args[0]).__name__))}
             return True, memory
-    if( type(exp) == ParserError):
+    if( type(exp) == ParserError or type(exp) == LexerError):
         memory = {"Error": exp}
         return False, memory
 
@@ -131,8 +132,6 @@ def interpret(ast : List, memory : dict) -> dict:
         blocklist = ast.blocks
     else:
         blocklist = ast
-    print(blocklist)
-    print(memory)
     if ( len(blocklist) > 1 ):
         memory = interpretNamedTuple(blocklist[0], memory)[1]
         if( (memory.get("Error"))):

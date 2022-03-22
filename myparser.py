@@ -1,8 +1,14 @@
 from typing import TypeVar, List, Tuple, Union
 
-from lexer import Token
+from lexer import Token, LexerError
 from collections import namedtuple
 
+def parserErrorDecorator(func):
+    def inner(tokenLine):
+        if(tokenLine[0].type == "ERROR"):
+            return LexerError(tokenLine[0].text), tokenLine[1:]
+        return func(tokenLine)
+    return inner
 
 Expression = namedtuple("Expression", ["function", "argc", "args"])
 Function = namedtuple("Function", ["name", "args"])
@@ -13,24 +19,23 @@ If = namedtuple("If", ["Body", "Expression", "ElseBody"])
 ParserError = namedtuple("ParserError", ["Errormessage"])
 
 class AST:
-    def __init__(self, name: str = "", argumentList = "", codeSequence = "", funcreturn = ""):
+    def __init__(self, name: str = "", argumentList: List[Token] = "", codeSequence: List[Union[Expression, If, Loop, Function]] = ""):
         self.name = name
         self.argumentList = argumentList
         self.codeSequence = codeSequence
-        self.funcreturn  = funcreturn
         self.blocks = List
         self.error = None
     
     def __str__(self):
-        return "AST" + self.name
+        return "AST " + self.name
 
-def parseNotOperator(tokenLine: List[Token]):
+def parseNotOperator(tokenLine: List[Token]) -> Tuple[Union[Value, Variable, Function], List[Token]]:
     if(tokenLine[0].type == "VARIABLE"):
         if(tokenLine[1].type == "LPAREN"): #Functioncall
             parenIndexes = returnParenIndexes(tokenLine)
             if(parenIndexes is not ParserError):
                 functionname = tokenLine[0].text
-                argument, tokenLine = detectparse(tokenLine[parenIndexes[0]+1:])
+                argument, tokenLine = detectParse(tokenLine[parenIndexes[0]+1:])
                 function = Function(functionname, argument )
                 return function, tokenLine[1:]
             
@@ -39,50 +44,51 @@ def parseNotOperator(tokenLine: List[Token]):
     else:
         return Value(tokenLine[0].text), tokenLine[1:]
     
-def parseOperator(tokenLine: List[Token]):
+def parseOperator(tokenLine: List[Token]) -> Tuple[Expression, List[Token]]:
     function = tokenLine[0].text
-    argument1, tokenLine = detectparse(tokenLine[1:])
-    argument2, tokenLine = detectparse(tokenLine)
+    argument1, tokenLine = detectParse(tokenLine[1:])
+    argument2, tokenLine = detectParse(tokenLine)
     return Expression(function=function, argc=2, args=[argument1, argument2]), tokenLine
 
-def parseShowGiveback(tokenLine: List[Token]):
+def parseShowGiveback(tokenLine: List[Token]) -> Tuple[Expression, List[Token]]:
     function = tokenLine[0].text
     parenindex = returnParenIndexes(tokenLine)
-    arguments, tokenLine = detectparse(tokenLine[parenindex[0]+1:])
+    arguments, tokenLine = detectParse(tokenLine[parenindex[0]+1:])
     
     return Expression(function=function, argc=len(arguments), args=[arguments]), tokenLine[1:]
 
-def parseIf(tokenLine: List[Token]):
+def parseIf(tokenLine: List[Token]) -> Tuple[If, List[Token]]:
     parenIndex = returnParenIndexes(tokenLine)
-    expression, tokenLine = detectparse(tokenLine[parenIndex[0]+1:])
+    expression, tokenLine = detectParse(tokenLine[parenIndex[0]+1:])
     braceIndex = returnBraceIndexes(tokenLine)
-    body, tokenLine = detectparse(tokenLine[braceIndex[0]+1:])
+    body, tokenLine = detectParse(tokenLine[braceIndex[0]+1:])
 
     if(tokenLine[1].type == "ELSE"):
         tokenLine = tokenLine[1:]
         braceIndex = returnBraceIndexes(tokenLine)
-        elsebody, tokenLine = detectparse(tokenLine[braceIndex[0]+1:])
+        elsebody, tokenLine = detectParse(tokenLine[braceIndex[0]+1:])
         return If(Expression=expression, Body=[body], ElseBody=[elsebody]), tokenLine[1:]
 
     return If(Expression=expression, Body=[body], ElseBody = []),  tokenLine[1:]
 
-def parseBody(tokenLine : List[Token],  temp):
+def returnWhileBody(tokenLine : List[Token],  temp) -> Tuple[List[Union[Expression, Loop, If, Function]], List[Token]]:
     if tokenLine[0].text == "}":
         return temp, tokenLine[1:]
     else:
-        exp, tokenLine = detectparse(tokenLine)
+        exp, tokenLine = detectParse(tokenLine)
         temp.append(exp)
-        return parseBody(tokenLine, temp)
+        return returnWhileBody(tokenLine, temp)
 
-def parseWhile(tokenLine: List[Token]):
+def parseWhile(tokenLine: List[Token]) -> Tuple[Loop, List[Token]]:
     parenIndex = returnParenIndexes(tokenLine)
-    expression, tokenLine = detectparse(tokenLine[parenIndex[0]+1:])
+    expression, tokenLine = detectParse(tokenLine[parenIndex[0]+1:])
     braceIndex = returnBraceIndexes(tokenLine)
-    body, tokenLine = parseBody(tokenLine[braceIndex[0]+1:], [])
+    body, tokenLine = returnWhileBody(tokenLine[braceIndex[0]+1:], [])
 
     return Loop(Expression=expression, Body=body), tokenLine
 
-def detectparse(tokenLine: List[Token]) -> List[Union[Expression, Loop, If, Function]]:
+@parserErrorDecorator
+def detectParse(tokenLine: List[Token]) -> Tuple[Union[Expression, Loop, If, Function], List[Token]]:
     operators = ["OPERATOR", "SHOWME", "GIVEBACK", "WHILE", "IF", "ELSE"]
     if tokenLine:
         if(tokenLine[0].type not in operators):
@@ -178,7 +184,7 @@ def makeAST(tokenlist: List) -> AST:
     return ast
 
 def generateBlocks(ast: AST) -> AST:
-    value, tokenlist = detectparse(ast.codeSequence)
+    value, tokenlist = detectParse(ast.codeSequence)
     if (value):
         ast.blocks.append(value)
         ast.codeSequence = tokenlist

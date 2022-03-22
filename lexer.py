@@ -1,18 +1,29 @@
+from collections import namedtuple
 import re
 from functools import reduce
 from typing import List, Tuple
 import operator
 
+LexerError = namedtuple("LexerError", ["Errormessage"])
+
+def LexerErrorDecorator(func) :
+    def inner(string, linenr):
+        if(type(string) == LexerError):
+            return Token("ERROR", "Syntax error: Second \" not found", linenr)
+        else:
+            return func(string, linenr)
+    return inner
+        
 class Token:
-    def __init__(self, type_: str, text_: str, linenr_):
+    def __init__(self, type_: str, text_: str, linenr_: int):
         self.type = type_
         self.text = text_
         self.linenr = linenr_
 
-    def __repr__(self):
-        return "[" + self.type + ", " + self.text + "] at " + self.linenr
+    def __str__(self):
+        return "[" + self.type + ", " + self.text + "]"
 
-def addLineNumbers(fileinput: List, linenr: int) -> Tuple[List[Token], int]:
+def addLineNumbers(fileinput: List, linenr: int = 0) -> Tuple[List[Token], int]:
     fileinput[linenr] = (fileinput[linenr], linenr)
     if (linenr+1 == len(fileinput)):
         return fileinput
@@ -50,13 +61,14 @@ def combineStrings(stringinput: List[Token]) -> List[Token]:
             else:
                 return stringinput
         else:
-            raise Exception("Syntax error: Expected second \"")
+            return LexerError("Syntax error: Expected second \"")
     else:
         return stringinput
     
 def generateTokens(tokenstring : List, linenr: int) -> List[Token]:
     return list(map(lambda x: stringToToken(x, linenr), tokenstring))
 
+@LexerErrorDecorator
 def stringToToken(string: str, linenr: int) -> Token:
     operators = ["operator=", "operator==", "operator+", "operator-", "operator<", "operator>"]
     if(string in operators):
@@ -100,7 +112,7 @@ def stringToToken(string: str, linenr: int) -> Token:
         return Token("FUNCTIONCALL", string, linenr)
 
     else:
-        raise Exception("Syntax Error: \"{0}\" on line {1}.".format(string, linenr))
+        return Token("ERROR", string, linenr)
 
 
 
@@ -109,4 +121,3 @@ def lexer(filename: str) -> List[Token]:
     f = list(map(lambda special: list(map(lambda y: (combineStrings(y[0]), y[1]), addLineNumbers(list(map(lambda a: a.split(), list(map(lambda x: x.split("//", 1)[0], open(special, "r").readlines())))), 0))), filename)) #Split the file, add line numbers and combine strings
     tokenList = list(map(lambda z: generateTokens(z[0], z[1]), reduce(operator.iconcat, f, [])))
     return reduce(operator.iconcat, tokenList, []) #generate tokens and move all into one array
-

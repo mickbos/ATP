@@ -19,11 +19,11 @@ def main():
 if __name__ == "__main__":
     main()
 
-def sommig( n ):
-    result = 0
-    while ( n >= 1 ):
-        result += n
-        n=n-1
-    return result
+# def sommig( n ):
+#     result = 0
+#     while ( n >= 1 ):
+#         result += n
+#         n=n-1
+#     return result
 
-print(sommig(5))
+# print(sommig(5))
