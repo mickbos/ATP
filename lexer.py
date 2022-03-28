@@ -4,16 +4,16 @@ from functools import reduce
 from typing import List, Tuple
 import operator
 
-LexerError = namedtuple("LexerError", ["Errormessage"])
-
 def LexerErrorDecorator(func) :
     def inner(string, linenr):
-        if(type(string) == LexerError):
+        if(type(string) == TBMPError):
             return Token("ERROR", "Syntax error: Second \" not found", linenr)
         else:
             return func(string, linenr)
     return inner
         
+TBMPError = namedtuple("TBMPError", ["Errormessage"])
+
 class Token:
     def __init__(self, type_: str, text_: str, linenr_: int):
         self.type = type_
@@ -61,7 +61,7 @@ def combineStrings(stringinput: List[Token]) -> List[Token]:
             else:
                 return stringinput
         else:
-            return LexerError("Syntax error: Expected second \"")
+            return TBMPError("Syntax error: Expected second \"")
     else:
         return stringinput
     

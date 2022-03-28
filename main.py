@@ -6,11 +6,12 @@ import sys
 
 def main():
     # try:
-    tokens = lexer(["tbmp.useless", "parsertest.useless"])
+    # tokens = lexer(["parsertest.use", "tbmp.use"])
+    tokens = lexer(["errorhandling.use", ])
     ASTs = (parse(tokens))
     errors = list(map(lambda x: x.error, ASTs))
-    
-    memory = dict(map(lambda x: (x.name.text, x), ASTs))
+
+    memory = dict(map(lambda x: (x.name, x), ASTs))
     l = interpret(memory['main'], memory)
 
     # except Exception as e:
