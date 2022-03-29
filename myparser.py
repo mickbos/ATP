@@ -43,6 +43,11 @@ def parseNotOperator(tokenLine: List[Token]) -> Tuple[Union[Value, Variable, Fun
         return Variable(tokenLine[0].text), tokenLine[1:]
     elif(tokenLine[0].type == "VALUE"):
         return Value(tokenLine[0].text), tokenLine[1:]
+    elif(tokenLine[0].type == "NUMERAL"):
+        return Value(tokenLine[0].text), tokenLine[1:]
+    elif(tokenLine[0].type == "STRING"):
+        return Value(tokenLine[0].text), tokenLine[1:]
+        
     else:
         return TBMPError("Syntax error: {0} is not expected".format(tokenLine[0].text)), tokenLine[1:]
     
