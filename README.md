@@ -5,14 +5,14 @@ Brainfuck heeft namelijk maar 8 instructies:<br>
 
 | **Command**   | **Description**                     |
 |:-------------:|:-----------------------------------:|
-| >             | Move memory pointer to the right    |
-| <             | Move memory pointer to the left     |
-| +             | Increment memory cell at the pointer| 
-| -             | Decrement memory cell at the pointer|
-| .             | Output the character signified by the cell at the pointer |
-| ,             | Input a character and store it in the cell at the pointer |
-| [             | Jump past the matching `]` if the cell at the pointer is 0 |
-| ]             | Jump back to the matching `[` if the cell at the pointer is nonzero |
+| `>`             | Move memory pointer to the right    |
+| `<`             | Move memory pointer to the left     |
+| `+`             | Increment memory cell at the pointer| 
+| `-`             | Decrement memory cell at the pointer|
+| `.`             | Output the character signified by the cell at the pointer |
+| `,`             | Input a character and store it in the cell at the pointer |
+| `[`             | Jump past the matching `]` if the cell at the pointer is 0 |
+| `]`             | Jump back to the matching `[` if the cell at the pointer is nonzero |
 
 Om te bewijzen dat mijn interpreter Turing compleet is, moet ik dus bewijzen dat mijn taal in ieder geval de bovenstaande functionaliteit bevat. <br>
 De `+`, `-`, `<` en `>` worden gebruikt om waardes in memory te zetten. In mijn programmeertaal wordt dezelfde functionaliteit geleverd door middel van de volgende operators. `operator+` `operator-` en `operator=` <br>
