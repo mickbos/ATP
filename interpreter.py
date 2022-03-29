@@ -1,7 +1,6 @@
 from myparser import Expression, Function, Variable, Value, Loop, If, AST
 from typing import List, Union, Tuple
 from collections import namedtuple
-from copy import copy
 from lexer import TBMPError
 
 def errorDecorator(func): # Error decorator om zo de afhandeling van de errors uit de normale code te halen

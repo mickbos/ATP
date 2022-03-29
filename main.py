@@ -6,8 +6,7 @@ import sys
 
 def main():
     # try:
-    # tokens = lexer(["parsertest.use", "tbmp.use"])
-    tokens = lexer(["errorhandling.use", ])
+    tokens = lexer(["tbmp.use", "parsertest.use"])
     ASTs = (parse(tokens))
     errors = list(map(lambda x: x.error, ASTs))
 
