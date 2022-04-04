@@ -5,119 +5,79 @@ from typing import List, Tuple
 import operator
 
 def LexerErrorDecorator(func) :
-    def inner(string, linenr):
+    def inner(string):
         if(type(string) == TBMPError):
-            return Token("ERROR", "Syntax error: Second \" not found", linenr)
+            return Token("ERROR", "Syntax error: Second \" not found")
         else:
-            return func(string, linenr)
+            return func(string)
     return inner
         
+
 TBMPError = namedtuple("TBMPError", ["Errormessage"])
 
 class Token:
-    def __init__(self, type_: str, text_: str, linenr_: int):
+    def __init__(self, type_: str, text_: str):
         self.type = type_
         self.text = text_
-        self.linenr = linenr_
 
     def __str__(self):
         return "[" + self.type + ", " + self.text + "]"
 
-def addLineNumbers(fileinput: List, linenr: int = 0) -> Tuple[List[Token], int]:
-    fileinput[linenr] = (fileinput[linenr], linenr)
-    if (linenr+1 == len(fileinput)):
-        return fileinput
-    return addLineNumbers(fileinput, linenr + 1)
-
-def rfind(r : List) -> int:
-    if not r:
-        return -1
-    elif r[-1][-1] == "\"": 
-        return len(r) - 1
-    else:
-        return rfind(r[:-1])
-
-def lfind(l : List) -> int:
-    if not l:
-        return -1
-    elif l[-1][0] == "\"":
-        return len(l) -1
-    else:
-        return lfind(l[:-1])
-
 def isNumeral(s) -> bool:
     return all(map(lambda l: '0' <= '9', s if s != '-' else s[1:]))
 
-def combineStrings(stringinput: List[Token]) -> List[Token]:
-    left = lfind(stringinput)
-    right = rfind(stringinput)
-    if(left != -1):
-        if(right != -1):
-            if(len(stringinput[left:right+1]) >= 2):
-                head, *tail = stringinput[left:right+1]
-                head += " " + tail[0]
-                stringinput[left: right+1] = [head] + tail[1:]
-                return combineStrings(stringinput)
-            else:
-                return stringinput
-        else:
-            return TBMPError("Syntax error: Expected second \"")
-    else:
-        return stringinput
     
-def generateTokens(tokenstring : List, linenr: int) -> List[Token]:
-    return list(map(lambda x: stringToToken(x, linenr), tokenstring))
+def generateTokens(tokenstring : List) -> List[Token]:
+    return list(map(lambda x: stringToToken(x), tokenstring))
 
 @LexerErrorDecorator
-def stringToToken(string: str, linenr: int) -> Token:
+def stringToToken(string: str) -> Token:
     operators = ["operator=", "operator==", "operator+", "operator-", "operator<", "operator>"]
     if(string in operators):
-        return Token("OPERATOR", string, linenr)
+        return Token("OPERATOR", string)
 
     if(string == "if"):
-        return Token("IF", "if", linenr)
+        return Token("IF", "if")
     if(string == "else"):
-        return Token("ELSE", "else", linenr)
+        return Token("ELSE", "else")
     if(string == "showme"):
-        return Token("SHOWME", "showme", linenr)
+        return Token("SHOWME", "showme")
     if(string == "while"):
-        return Token("WHILE", "while", linenr)
+        return Token("WHILE", "while")
     if(string == "giveback"):
-        return Token("GIVEBACK", "giveback", linenr)
+        return Token("GIVEBACK", "giveback")
     
     if(string == "def"):
-        return Token("FUNCTIONDEF", string, linenr)
+        return Token("FUNCTIONDEF", string)
 
-    if(string[0] == "\""):
-        return Token("STRING", string, linenr)
     if(string == "["):
-        return Token("OPENING_BRACKET", "[", linenr)
+        return Token("OPENING_BRACKET", "[")
     if(string == "]"):
-        return Token("CLOSING_BRAKCET", "]", linenr)
+        return Token("CLOSING_BRAKCET", "]")
     if(string == "{"):
-        return Token("LBRACE", "{", linenr)
+        return Token("LBRACE", "{")
     if(string == "}"):
-        return Token("RBRACE", "}", linenr)
+        return Token("RBRACE", "}")
     if(string == "("):
-        return Token("LPAREN", "(", linenr)
+        return Token("LPAREN", "(")
     if(string == ")"):
-        return Token("RPAREN", ")", linenr)    
+        return Token("RPAREN", ")")    
         
     if(re.fullmatch("^[0-9-][0-9.]*", string)):
-        return Token("NUMERAL", string, linenr)
+        return Token("NUMERAL", string)
     if (re.fullmatch("^[a-zA-Z_][a-zA-Z_0-9]*", string)):
-        return Token("VARIABLE", string, linenr)
+        return Token("VARIABLE", string)
 
     elif(string[-1] == "("):
-        return Token("FUNCTIONCALL", string, linenr)
+        return Token("FUNCTIONCALL", string)
 
     else:
-        return Token("ERROR", string, linenr)
-
+        return Token("ERROR", string)
 
 
 
 def lexer(filename: str) -> List[Token]:
-    f = list(map(lambda special: list(map(lambda y: (combineStrings(y[0]), y[1]), addLineNumbers(list(map(lambda a: a.split(), list(map(lambda x: x.split("//", 1)[0], open(special, "r").readlines())))), 0))), filename)) #Split the file, add line numbers and combine strings
-    tokenList = list(map(lambda z: generateTokens(z[0], z[1]), reduce(operator.iconcat, f, [])))
+    g = list(map(lambda special: list(map(lambda a: a.split(), list(map(lambda x: x.split("//", 1)[0], open(special, "r").readlines())))), filename))
+
+    tokenList = list(map(lambda z: generateTokens(z), reduce(operator.iconcat, g, [])))
     return reduce(operator.iconcat, tokenList, []) #generate tokens and move all into one array

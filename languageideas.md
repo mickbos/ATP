@@ -14,8 +14,6 @@ while( while this returns True ) { what to do }
 
 Showme(  )  //print
 
-String between ""
-
 def functionname( variables ){
     what to do
     giveback ( what to return )  //return 
