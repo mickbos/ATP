@@ -10,9 +10,9 @@ operator>
 if( condition ) { what to do } 
 else { what to do }
 
-while( while this returns True ) { what to do }
+while( condition ) { what to do }
 
-Showme(  )  //print
+Showme( x )  //prints 2
 
 def functionname( variables ){
     what to do

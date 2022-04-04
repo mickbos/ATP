@@ -2,19 +2,14 @@ import ast
 from lexer import lexer
 from myparser import parse
 from interpreter import interpret
-import sys
 
 def main():
     # try:
-    tokens = lexer(["tbmp.use", "parsertest.use"])
+    tokens = lexer(["tbmp.use", "compilertest.use", "parsertest.use"])
     ASTs = (parse(tokens))
-    errors = list(map(lambda x: x.error, ASTs))
 
     memory = dict(map(lambda x: (x.name, x), ASTs))
-    l = interpret(memory['main'], memory)
-
-    # except Exception as e:
-    #     print(e)
+    interpret(memory['main'], memory)
 
 if __name__ == "__main__":
     main()

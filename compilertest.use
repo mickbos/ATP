@@ -1,0 +1,3 @@
+def compilertest ( n ) {
+    giveback ( operator+ n 1 )
+}
