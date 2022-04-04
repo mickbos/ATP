@@ -4,16 +4,8 @@ from functools import reduce
 from typing import List, Tuple
 import operator
 
-def LexerErrorDecorator(func) :
-    def inner(string):
-        if(type(string) == TBMPError):
-            return Token("ERROR", "Syntax error: Second \" not found")
-        else:
-            return func(string)
-    return inner
-        
-
 TBMPError = namedtuple("TBMPError", ["Errormessage"])
+
 
 class Token:
     def __init__(self, type_: str, text_: str):
@@ -23,14 +15,13 @@ class Token:
     def __str__(self):
         return "[" + self.type + ", " + self.text + "]"
 
-def isNumeral(s) -> bool:
-    return all(map(lambda l: '0' <= '9', s if s != '-' else s[1:]))
-
-    
-def generateTokens(tokenstring : List) -> List[Token]:
+# generateTokens :: [str] -> [Token]
+# functie om lijst van strings in tokens te converten
+def generateTokens(tokenstring : List[str]) -> List[Token]:
     return list(map(lambda x: stringToToken(x), tokenstring))
 
-@LexerErrorDecorator
+# stringToToken :: str -> Token
+# Converts de string naar tokens
 def stringToToken(string: str) -> Token:
     operators = ["operator=", "operator==", "operator+", "operator-", "operator<", "operator>"]
     if(string in operators):
@@ -68,16 +59,12 @@ def stringToToken(string: str) -> Token:
     if (re.fullmatch("^[a-zA-Z_][a-zA-Z_0-9]*", string)):
         return Token("VARIABLE", string)
 
-    elif(string[-1] == "("):
-        return Token("FUNCTIONCALL", string)
-
     else:
         return Token("ERROR", string)
 
-
-
+# lexer :: str -> [Token]
+# Main lexer functie.
 def lexer(filename: str) -> List[Token]:
-    g = list(map(lambda special: list(map(lambda a: a.split(), list(map(lambda x: x.split("//", 1)[0], open(special, "r").readlines())))), filename))
-
-    tokenList = list(map(lambda z: generateTokens(z), reduce(operator.iconcat, g, [])))
-    return reduce(operator.iconcat, tokenList, []) #generate tokens and move all into one array
+    itemList = list(map(lambda special: list(map(lambda a: a.split(), list(map(lambda x: x.split("//", 1)[0], open(special, "r").readlines())))), filename)) # Lees alle bestanden. Verwijder alles na een // en split op spaties
+    tokenList = list(map(lambda z: generateTokens(z), reduce(operator.iconcat, itemList, []))) # Run generateTokens over alle tokens uit itemList
+    return reduce(operator.iconcat, tokenList, []) # Flikker alle tokens bij mekaar in 1 lijst

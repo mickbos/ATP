@@ -4,7 +4,7 @@ from lexer import Token, TBMPError
 from collections import namedtuple
 
 def TBMPErrorDecorator(func):
-    def inner(tokenLine):
+    def inner(tokenLine: List[Token]) -> Tuple[Union[Expression, Loop, If, Function], List[Token]]:
         if(tokenLine[0].type == "ERROR"):
             return TBMPError(tokenLine[0].text), tokenLine[1:]
         return func(tokenLine)
@@ -28,7 +28,9 @@ class AST:
     def __str__(self):
         return "Abstract Syntax Tree of function " + self.name
 
-def parseNotOperator(tokenLine: List[Token]) -> Tuple[Union[Value, Variable, Function], List[Token]]:
+# parseNotOperator :: [Token] -> (Union(Value, Variable, Function, TBMError), [Token])
+# Parser functie voor variabelen, values en nummers
+def parseNotOperator(tokenLine: List[Token]) -> Tuple[Union[Value, Variable, Function, TBMPError], List[Token]]:
     if(tokenLine[0].type == "VARIABLE"):
         if(len(tokenLine) > 1):
             if(tokenLine[1].type == "LPAREN"): #Functioncall
@@ -45,16 +47,19 @@ def parseNotOperator(tokenLine: List[Token]) -> Tuple[Union[Value, Variable, Fun
         return Value(tokenLine[0].text), tokenLine[1:]
     elif(tokenLine[0].type == "NUMERAL"):
         return Value(tokenLine[0].text), tokenLine[1:]
-        
     else:
         return TBMPError("Syntax error: {0} is not expected".format(tokenLine[0].text)), tokenLine[1:]
     
+# parseOperator :: [Token] -> (Expression, [Token])
+# Parse functie voor operators
 def parseOperator(tokenLine: List[Token]) -> Tuple[Expression, List[Token]]:
     function = tokenLine[0].text
     argument1, tokenLine = detectParse(tokenLine[1:])
     argument2, tokenLine = detectParse(tokenLine)
     return Expression(function=function, argc=2, args=[argument1, argument2]), tokenLine
 
+# parseShowGiveback :: [Token] -> (Expression, [Token])
+# Parse functie om de showme en giveback af te handelen
 def parseShowGiveback(tokenLine: List[Token]) -> Tuple[Expression, List[Token]]:
     function = tokenLine[0].text
     parenindex = returnParenIndexes(tokenLine)
@@ -65,6 +70,8 @@ def parseShowGiveback(tokenLine: List[Token]) -> Tuple[Expression, List[Token]]:
     else:
         return parenindex, []
 
+# parseIf :: [Token] -> (If, [Token])
+# Parse functie voor if statements
 def parseIf(tokenLine: List[Token]) -> Tuple[If, List[Token]]:
     parenIndex = returnParenIndexes(tokenLine)
     if(type(parenIndex) != TBMPError):
@@ -73,18 +80,20 @@ def parseIf(tokenLine: List[Token]) -> Tuple[If, List[Token]]:
         if(type(braceIndex) != TBMPError):
             body, tokenLine = detectParse(tokenLine[braceIndex[0]+1:])
 
-            if(tokenLine[1].type == "ELSE"):
-                tokenLine = tokenLine[1:]
-                braceIndex = returnBraceIndexes(tokenLine)
-                elsebody, tokenLine = detectParse(tokenLine[braceIndex[0]+1:])
-                return If(Expression=expression, Body=[body], ElseBody=[elsebody]), tokenLine[1:]
+            if(len(tokenLine) > 1):
+                if(tokenLine[1].type == "ELSE"):
+                    tokenLine = tokenLine[1:]
+                    braceIndex = returnBraceIndexes(tokenLine)
+                    elsebody, tokenLine = detectParse(tokenLine[braceIndex[0]+1:])
+                    return If(Expression=expression, Body=[body], ElseBody=[elsebody]), tokenLine[1:]
 
             return If(Expression=expression, Body=[body], ElseBody = []),  tokenLine[1:]
-        return braceIndex, []
-    return parenIndex, []
+        return braceIndex, [] # returns de error
+    return parenIndex, [] # returns de error
 
-
-def returnWhileBody(tokenLine : List[Token],  temp) -> Tuple[List[Union[Expression, Loop, If, Function]], List[Token]]:
+# ReturnWhileBody :: [Token] -> [Union(Expression, Loop, If, Function)] -> ([Union(Expression, Loop, If, Function)], [Token])
+# Functie om de body van de while te returnen. 
+def returnWhileBody(tokenLine : List[Token],  temp: List[Union[Expression, Loop, If, Function]]) -> Tuple[List[Union[Expression, Loop, If, Function]], List[Token]]:
     if tokenLine[0].text == "}":
         return temp, tokenLine[1:]
     else:
@@ -92,6 +101,8 @@ def returnWhileBody(tokenLine : List[Token],  temp) -> Tuple[List[Union[Expressi
         temp.append(exp)
         return returnWhileBody(tokenLine, temp)
 
+# parseWhile :: [Token] -> (Loop, [Token])
+# Functie om de while te parsen. Check de haakjes. Sla de expressie op en 
 def parseWhile(tokenLine: List[Token]) -> Tuple[Loop, List[Token]]:
     parenIndex = returnParenIndexes(tokenLine)
     if(type(parenIndex) != TBMPError):
@@ -104,6 +115,8 @@ def parseWhile(tokenLine: List[Token]) -> Tuple[Loop, List[Token]]:
         return braceIndex, []
     return parenIndex, []
 
+# detectParse :: [Token] -> [Union(Expression, Loop, If, Function), [Token])
+# Functie die de Token checkt en de juiste functie aanroept
 @TBMPErrorDecorator
 def detectParse(tokenLine: List[Token]) -> Tuple[Union[Expression, Loop, If, Function], List[Token]]:
     operators = ["OPERATOR", "SHOWME", "GIVEBACK", "WHILE", "IF", "ELSE"]
@@ -120,8 +133,9 @@ def detectParse(tokenLine: List[Token]) -> Tuple[Union[Expression, Loop, If, Fun
             return parseWhile(tokenLine)
     return [], []
 
-
-def findFunctionIndex(tokenlist: List, index: List = []) -> List[int]:
+# findFunctionIndex :: [Token] -> [int] -> [int]
+# Functie die de locatie van de "def" Tokens teruggeeft
+def findFunctionIndex(tokenlist: List[Token], index: List[int] = []) -> List[int]:
     if(len(tokenlist) == 0):
         return index
     elif (tokenlist[-1].text == "def"):
@@ -130,8 +144,9 @@ def findFunctionIndex(tokenlist: List, index: List = []) -> List[int]:
     else:
         return findFunctionIndex(tokenlist[:-1], index)
 
-
-def returnParenIndexes(tokenlist: List, lParen: int =0, rParen: int =0, toSkip: int = -1) -> Union[Tuple[int, int], TBMPError]:
+# returnParenIndexes :: [Token] -> int -> int -> int -> Union((int, int), TBMPError)
+# functie die de locatie van de haakjes teruggeeft in tokenlist
+def returnParenIndexes(tokenlist: List[Token], lParen: int =0, rParen: int =0, toSkip: int = -1) -> Union[Tuple[int, int], TBMPError]:
     if(tokenlist[rParen].text == ")"):
         if(toSkip > 0):
             return returnParenIndexes(tokenlist, lParen, rParen + 1, toSkip - 1)
@@ -153,6 +168,8 @@ def returnParenIndexes(tokenlist: List, lParen: int =0, rParen: int =0, toSkip: 
             return TBMPError("Opening parenthesis not found")
         return returnParenIndexes(tokenlist, lParen + 1, rParen, toSkip)
 
+# returnBraceIndexes :: [Token] -> int -> int -> int -> Union((int, int), TBMPError)
+# functie die de locatie van de accolades teruggeeft in tokenlist
 def returnBraceIndexes(tokenlist: List, lBrace: int = 0, rBrace: int =0, toSkip: int = -1) -> Union[Tuple[int, int], TBMPError]:
     if(tokenlist[rBrace].text == "}"):
         if(toSkip > 0):
@@ -177,8 +194,8 @@ def returnBraceIndexes(tokenlist: List, lBrace: int = 0, rBrace: int =0, toSkip:
             return returnBraceIndexes(tokenlist, lBrace + 1, rBrace, toSkip)
 
 
-
-
+# makeAST :: [Token] -> AST
+# Functie die de AST genereert
 def makeAST(tokenlist: List[Token]) -> AST:
     ast = AST()
     ast.name = tokenlist[1].text
@@ -189,17 +206,20 @@ def makeAST(tokenlist: List[Token]) -> AST:
         return ast
     firstP, lastP = parenIndex
 
-    ast.argumentList =  list(map(lambda i: i.text, tokenlist[firstP+1: lastP])) 
+    ast.argumentList =  list(map(lambda i: i.text, tokenlist[firstP+1: lastP])) # Sla de variabelenaam van de argumenten op in de AST
 
     braceIndex = returnBraceIndexes(tokenlist, lastP + 1, lastP + 1)
     if (type(braceIndex) == TBMPError):
         ast.error = braceIndex
         return ast
     firstB, lastB = braceIndex
+
     ast.codeSequence = tokenlist[firstB + 1: lastB ]
     ast.blocks = []
     return ast
 
+# Nadat de ASTs gegenereerd zijn, worden de tokens geparsed naar blocks.
+# generateBlocks :: AST -> AST
 def generateBlocks(ast: AST) -> AST:
     value, tokenlist = detectParse(ast.codeSequence)
     if (value):
@@ -211,8 +231,9 @@ def generateBlocks(ast: AST) -> AST:
             return ast
     return ast
 
+# Main parse functie. Zoekt de functionindexes en roept generateBlocks aan per functionindex
+# parse :: [Token] -> [AST]
 def parse(tokens: List[Token]) -> List[AST]:
     functionindexes = findFunctionIndex(tokens)
-    functionindexes.sort()
     asts = list(map(lambda y: generateBlocks(y), list(map(lambda x: makeAST(tokens[x-1:]), functionindexes))))
     return asts
