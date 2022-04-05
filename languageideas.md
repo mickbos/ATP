@@ -2,7 +2,7 @@ Operator= x 2 //definition
 
 Operator== a b //equals
 
-operator+
+operator+ 
 operator-
 operator<
 operator>
