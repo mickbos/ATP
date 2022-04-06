@@ -15,12 +15,3 @@ def even ( n ) {
         giveback ( odd ( operator- n 1 ) )
     }
 }
-
-def sommig ( n ) {
-    operator= result 0
-    while ( operator> n 0 ) {
-        operator= result operator+ result n 
-        operator= n operator- n 1
-    }
-    giveback ( result )
-}

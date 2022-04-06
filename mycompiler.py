@@ -5,8 +5,9 @@ from myparser import AST, Expression, Loop, If, Function, Variable, Value
 
 stackoffsetdict = {}
 functionCount = 1
+functions = []
 
-def openFile(fileName : str = "") -> TextIOWrapper:
+def openFile(fileName : str = ""):
     file = open(fileName or "tbmp.asm", "w")
     file.writelines((".cpu cortex-m0\n" "\n"))
     return file
@@ -16,6 +17,11 @@ def compile(compileInput: List[AST]):
     writeGlobalFunctionDefinitions(compileInput, file)
 
     list(map(lambda x: compileAST(x, file), compileInput))
+    
+# writes all the .global <functionname> in outputFile
+def writeGlobalFunctionDefinitions(astList : List[AST], outputFile: TextIOWrapper):
+    list(map(lambda x: outputFile.write(".global {0} \n".format(x.name)), astList))
+
 
 # Throw in a variable to be stored in register. Returns register address
 def loadVariable(variable : str, targetRegister : str, fileOutput : TextIOWrapper) -> str:
@@ -31,106 +37,118 @@ def storeVariable(variable : str, sourceRegister : str, fileOutput : TextIOWrapp
         argumentOffset = stackoffsetdict[variable]
     fileOutput.write("\tstr {0}, [r7, #{1}]\n".format(sourceRegister, argumentOffset))
 
+def returnValue(block : Union[Expression, Value, Variable, Function], outputFile : TextIOWrapper, targetRegister : str):
+    if type(block) == Expression:
+        compileExpression(block, outputFile, targetRegister)
+    elif type(block) == Variable:
+        loadVariable(block.name, targetRegister, outputFile)
+    elif type(block) == Value:
+        outputFile.write("\tmov {0}, #{1}\n".format(targetRegister, block.content))
+    elif type(block) == Function:
+        compileFunctionCall(block, outputFile)
+        outputFile.write("\tmov {0}, r0\n".format(targetRegister))
 
-# writes all the .global <functionname> in outputFile
-def writeGlobalFunctionDefinitions(astList : List[AST], outputFile: TextIOWrapper):
-    list(map(lambda x: outputFile.write(".global {0} \n".format(x.name)), astList))
 
-def compileCalculationExpression(block : Expression, outputFile : TextIOWrapper) -> str:
-    if type(block.args[0]) == Variable:
-        loadVariable(block.args[0].name, "r2", outputFile)
-        variable0 = "r2"
-    elif type(block.args[0]) == Value:
-        variable0 = "#" + block.args[0].content
-    
-    if type(block.args[1]) == Variable:
-        loadVariable(block.args[1].name, "r3", outputFile)
-        variable1 = "r3"
-    elif type(block.args[1]) == Value:
-        variable1 = "#" + block.args[1].content
+
+def compileExpression(block : Expression, outputFile : TextIOWrapper, targetRegister : str):
+    if block.function == "operator+" or block.function == "operator-":
+        compileCalculationExpression(block, outputFile, targetRegister)
+    if block.function == "operator=":
+        compileDefinitionExpression(block, outputFile)
+    if block.function == "operator>" or block.function == "operator<":
+        compileComparisonExpression(block, outputFile)
+
+def compileCalculationExpression(block : Expression, outputFile : TextIOWrapper, targetRegister : str) -> str:
+    returnValue(block.args[0], outputFile, "r2")
+    returnValue(block.args[1], outputFile, "r3")
 
     if block.function == "operator+":
         func = "add"
     if block.function == "operator-":
         func = "sub"
     
-
-    string = "\t{0} r2, {1}, {2}\n".format(func, variable0, variable1)
+    string = "\t{0} {1}, {2}, {3}\n".format(func, targetRegister, "r2", "r3")
     outputFile.write(string)
-    return "r2"
-
-def compileExpression(block : Expression, outputFile : TextIOWrapper):
-    if block.function == "operator+" or block.function == "operator-":
-        compileCalculationExpression(block, outputFile)
-    if block.function == "operator=":
-        compileDefinitionExpression(block, outputFile)
-    if block.function == "operator>" or block.function == "operator<":
-        compileComparisonExpression(block, outputFile)
 
 def compileDefinitionExpression(block : Expression, outputFile : TextIOWrapper):
-    if type(block.args[1]) == Expression:
-        compileExpression(block.args[1], outputFile)
-    elif type(block.args[1]) == Variable:
-        loadVariable(block.args[1].name, "r2", outputFile)
+    returnValue(block.args[1], outputFile, "r2")
+    valueLocation = "r2"
 
-    storeVariable(block.args[0].name, 'r2', outputFile)
+    storeVariable(block.args[0].name, valueLocation, outputFile)
 
 def compileComparisonExpression(block : Expression, outputFile : TextIOWrapper):
-    if type(block.args[0]) == Variable:
-        loadVariable(block.args[0].name, "r2", outputFile)
-        variable0 = "r2"
-    elif type(block.args[0]) == Value:
-        variable0 = "#" + block.args[0].content
-    
-    if type(block.args[1]) == Variable:
-        loadVariable(block.args[1].name, "r3", outputFile)
-        variable1 = "r3"
-    elif type(block.args[1]) == Value:
-        variable1 = "#" + block.args[1].content
+    returnValue(block.args[0], outputFile, "r2")
+    returnValue(block.args[1], outputFile, "r3")
 
-    compare = "\tcmp {0}, {1}\n".format(variable0, variable1)
+    compare = "\tcmp {0}, {1}\n".format("r2", "r3")
     outputFile.write(compare)
 
 def compileGiveback(block : Expression, outputFile : TextIOWrapper):
-    if type(block.args[0]) == Variable:
-        loadVariable(block.args[0].name, "r2", outputFile)
-        variable0 = "r2"
-    elif type(block.args[0]) == Value:
-        variable0 = "#" + block.args[0].content
-
-    outputFile.write("\tmov r0, {0}\n".format(variable0))
+    returnValue(block.args[0], outputFile, "r0")
 
 def compileLoop(block : Loop, outputFile : TextIOWrapper):
     global functionCount
-    branchLink = ".L{0}\n".format(functionCount)
+    branchLink = ".L{0}:\n".format(functionCount)
     functionCount += 1
     outputFile.write(branchLink)
     compileComparisonExpression(block.Expression, outputFile)
     if block.Expression.function == "operator<":
-        outputFile.write("\tbl {0}".format(branchLink))
+        outputFile.write("\tbge .L{0}\n".format(functionCount))
     elif block.Expression.function == "operator>":
-        outputFile.write("\tbg {0}".format(branchLink))
+        outputFile.write("\tble .L{0}\n".format(functionCount))
 
     list(map(lambda x: compileBlock(x, outputFile), block.Body))
+    outputFile.write("\tb .L{0}\n".format(functionCount - 1))
     
-    outputFile.write(".L{0}\n".format(functionCount))
+    outputFile.write(".L{0}:\n".format(functionCount))
     functionCount += 1
 
+def compileFunctionCall(block : Function, outputFile : TextIOWrapper):
+    returnValue(block.args, outputFile, "r2")
+
+    outputFile.write("\tmov r0, {0}\n".format("r2"))
+    outputFile.write("\tbl {0}\n".format(block.name))
+
+def compileIf(block : If, outputFile : TextIOWrapper):
+    global functionCount
+    compileComparisonExpression(block.Expression, outputFile)
+    if block.Expression.function == "operator<":
+        outputFile.write("\tbge .L{0}\n".format(functionCount))
+    elif block.Expression.function == "operator>":
+        outputFile.write("\tble .L{0}\n".format(functionCount))
+    elif block.Expression.function == "operator==":
+        outputFile.write("\tbne .L{0}\n".format(functionCount))
+
+    list(map(lambda x: compileBlock(x, outputFile), block.Body))
+
+    if block.ElseBody:
+        outputFile.write("\tb .L{0}\n".format(functionCount + 1))
+        outputFile.write(".L{0}:\n".format(functionCount))
+        functionCount += 1
+
+        list(map(lambda y: compileBlock(y, outputFile), block.ElseBody))
+
+    outputFile.write(".L{0}:\n".format(functionCount))
+    functionCount += 1
 
 # compiles block and returns
-def compileBlock(block : Union[Expression, If, Loop, Function], outputFile : TextIOWrapper) -> str:
+def compileBlock(block : Union[Expression, If, Loop, Function], outputFile : TextIOWrapper):
     if type(block) == Expression:
         if block.function != "showme" and block.function != "giveback":
-            compileExpression(block, outputFile)
+            compileExpression(block, outputFile, "r2")
         if block.function == "giveback":
             compileGiveback(block, outputFile)
     if type(block) == Loop:
         compileLoop(block, outputFile)
+    if type(block) == If:
+        compileIf(block, outputFile)
+
+
 
 def compileAST(ast : AST, outputFile : TextIOWrapper):
     outputFile.write(ast.name + ":\n")
     outputFile.write("\tpush {r7, lr}\n")
-    outputFile.write("\tsub sp, sp, #8\n")
+    outputFile.write("\tsub sp, sp, #16\n")
     outputFile.write("\tadd r7, sp, #0\n")
 
     if ast.argumentList:
@@ -141,5 +159,5 @@ def compileAST(ast : AST, outputFile : TextIOWrapper):
     list(map(lambda x: compileBlock(x, outputFile), blockList))
 
     outputFile.write("\tmov sp, r7\n")
-    outputFile.write("\tadd sp, sp, #8\n")
+    outputFile.write("\tadd sp, sp, #16\n")
     outputFile.write("\tpop {r7, pc}\n")

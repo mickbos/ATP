@@ -5,7 +5,7 @@ from mycompiler import compile
 
 def main():
     # try:
-    tokens = lexer(["compilertest.use", ])
+    tokens = lexer(["parsertest.use", ])
     ASTs = (parse(tokens))
 
     memory = dict(map(lambda x: (x.name, x), ASTs))

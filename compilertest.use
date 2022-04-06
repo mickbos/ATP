@@ -1,8 +1,12 @@
 def sommig ( n ) {
-    operator= result 0
+    operator= result return ( 5 )
     while ( operator> n 0 ) {
         operator= result operator+ result n 
         operator= n operator- n 1
     }
     giveback ( result )
+}
+
+def return ( n ) {
+    giveback ( 0 )
 }
