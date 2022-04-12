@@ -37,8 +37,9 @@ def parseNotOperator(tokenLine: List[Token]) -> Tuple[Union[Value, Variable, Fun
                 parenIndexes = returnParenIndexes(tokenLine)
                 if(type(parenIndexes) is not TBMPError):
                     functionname = tokenLine[0].text
-                    argument, tokenLine = detectParse(tokenLine[parenIndexes[0]+1:])
-                    function = Function(functionname, argument )
+                    arguments, tokenLine = returnFunctionBody(tokenLine[2:], [])
+                    # arguments = ""
+                    function = Function(functionname, arguments )
                     return function, tokenLine[1:]
                 else:
                     return parenIndexes, tokenLine[1:]
@@ -101,8 +102,18 @@ def returnWhileBody(tokenLine : List[Token],  temp: List[Union[Expression, Loop,
         temp.append(exp)
         return returnWhileBody(tokenLine, temp)
 
+# ReturnWhileBody :: [Token] -> [Union(Expression, Loop, If, Function)] -> ([Union(Expression, Loop, If, Function)], [Token])
+# Functie om de body van de if te returnen
+def returnFunctionBody(tokenLine : List[Token],  temp: List[Union[Expression, Loop, If, Function]]) -> Tuple[List[Union[Expression, Loop, If, Function]], List[Token]]:
+    if tokenLine[0].text == ")":
+        return temp, tokenLine[1:]
+    else:
+        exp, tokenLine = detectParse(tokenLine)
+        temp.append(exp)
+        return returnFunctionBody(tokenLine, temp)
+
 # parseWhile :: [Token] -> (Loop, [Token])
-# Functie om de while te parsen. Check de haakjes. Sla de expressie op en 
+# Functie om de while te parsen. Check de haakjes. Sla de expressie op
 def parseWhile(tokenLine: List[Token]) -> Tuple[Loop, List[Token]]:
     parenIndex = returnParenIndexes(tokenLine)
     if(type(parenIndex) != TBMPError):

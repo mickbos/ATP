@@ -59,8 +59,8 @@ def interpretIf(exp: If, memory: dict) -> dict:
 # interpretFunction :: Function -> dict -> dict
 def interpretFunction(exp: Function, memory: dict) -> dict: 
     functionBody = memory[exp.name]
-    functionArgument = returnValue(exp.args, memory)
-    functionMemory = {**dict(filter(lambda a: a if type(a[1]) == AST else None, memory.items())), **{'functionarguments': [functionArgument]}}
+    functionArguments = list(map(lambda x: returnValue(x, memory), exp.args))
+    functionMemory = {**dict(filter(lambda a: a if type(a[1]) == AST else None, memory.items())), **{'functionarguments': functionArguments}}
     return interpret(functionBody, functionMemory)
 
  # interpret functie voor het interpreten van giveback. 

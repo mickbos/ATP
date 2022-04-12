@@ -5,8 +5,10 @@ from mycompiler import compile
 
 def main():
     # try:
-    tokens = lexer(["parsertest.use", ])
+    tokens = lexer(["compilertest.use",])
     ASTs = (parse(tokens))
+
+    print(ASTs[0].blocks)
 
     memory = dict(map(lambda x: (x.name, x), ASTs))
     # interpret(memory['main'], memory)
