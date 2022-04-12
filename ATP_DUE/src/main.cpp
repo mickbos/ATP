@@ -1,9 +1,28 @@
 #include <Arduino.h>
 
-void setup() {
-  // put your setup code here, to run once:
+extern "C" {
+    void serialBegin()
+    {
+        Serial.begin(9600);
+    }
+
+    void println(int i)
+    {
+        Serial.println(i);
+    }
+
+    bool odd(int i);
+    bool even(int i);
+    int sommig(int i);
+    int add(int a, int b);
+    int subtract(int a, int b);
 }
 
-void loop() {
-  // put your main code here, to run repeatedly:
+void setup(){
+    serialBegin();
+}
+
+void loop(){
+    sommig(83);
+    Wait(500);
 }

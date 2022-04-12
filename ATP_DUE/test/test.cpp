@@ -97,14 +97,15 @@ void setup()
     Serial.begin(9600);       // Needed to be able to print to serial monitor
     Sleep(1000);
     UNITY_BEGIN();
-
-    // testing basic operators
+        // testing basic operators
     RUN_TEST(testAdd);
     RUN_TEST(testSubtract);
 //     // testing examples, functioncalls
     RUN_TEST(testOdd);
     RUN_TEST(testEven);
-    RUN_TEST(testSommig);
+    RUN_TEST(testSommig); // C:\Users\mickb\.platformio\penv\Scripts\platformio.exe
+    
+    UNITY_END();
 }
 
 void loop()
