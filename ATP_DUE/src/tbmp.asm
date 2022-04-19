@@ -78,7 +78,6 @@ sommig:
 	sub sp, sp, #16
 	add r7, sp, #0
 	str r0, [r7, #4]
-	bl printlnInteger
 	mov r2, #0
 	str r2, [r7, #8]
 .L5:

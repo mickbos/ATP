@@ -8,7 +8,7 @@ def main():
     tokens = lexer(["compilertest.use",])
     ASTs = (parse(tokens))
 
-    memory = dict(map(lambda x: (x.name, x), ASTs))
+    # memory = dict(map(lambda x: (x.name, x), ASTs))
     # interpret(memory['main'], memory)
     compile(ASTs)
 
