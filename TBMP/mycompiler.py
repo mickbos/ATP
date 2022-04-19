@@ -178,6 +178,7 @@ def compileFunctionCall(block : Function, currentFunction: str, outputFile : Tex
     outputFile.write("\tbl {0}\n".format(block.name))
 
 # Checks the type of the block and calls the right function
+# compileBlock :: Union(Expression, If, Loop, Function) -> str -> TextIOWrapper -> ()
 def compileBlock(block : Union[Expression, If, Loop, Function], currentFunction: str, outputFile : TextIOWrapper) -> None:
     if type(block) == Expression:
         if block.function != "showme" and block.function != "giveback":
@@ -192,7 +193,7 @@ def compileBlock(block : Union[Expression, If, Loop, Function], currentFunction:
         compileFunctionCall(block, currentFunction, outputFile)
 
 # Store the parameters of the function in the registers
-# storeParameters :: [Token] -> int -> str -> TextIOWrapper -> None
+# storeParameters :: [Token] -> int -> str -> TextIOWrapper -> ()
 def storeParameters(argumentList : List[Token], i : int, currentFunction: str, outputFile : TextIOWrapper):
     if argumentList:
         storeVariable(argumentList[0], "r" + str(i), currentFunction, outputFile)
