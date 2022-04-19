@@ -2,31 +2,6 @@
 #include <unity.h>
 extern "C"
 {
-    void serialBegin()
-    {
-        Serial.begin(9600);
-    }
-
-    void printStr(const char *str)
-    {
-        Serial.print(str);
-    }
-
-    void printlnStr(const char *str)
-    {
-        Serial.println(str);
-    }
-
-    void printInteger(int i)
-    {
-        Serial.print(i);
-    }
-
-    void printlnInteger(int i)
-    {
-        Serial.println(i);
-    }
-
     bool odd(int i);
     bool even(int i);
     int sommig(int i);
