@@ -45,3 +45,14 @@ Functie resultaat wordt op de volgende manier weergegeven: Door middel van de re
 [Gekozen functionaliteit] geïmplementeerd door middel van de volgende functies: a) [functie] in [file] op regel [regel]
 ### Eigen gekozen taal
 ### Error handling
+
+
+## Compiler-functionaliteit Must-have:
+De gecompilede code kan geupload worden dankzij platformio met commando `pio run --target upload`
+
+Unit tests geschreven in 'ATP_DUE/test/test.cpp'
+Te runnen door in de ATP_DUE folder het commando `pio test` te runnen
+
+
+## Overige gemaakte keuzes:
+Compiler heeft GEEN error checking
